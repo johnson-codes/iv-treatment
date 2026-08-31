@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 236 48" fill="none" role="img" aria-labelledby="logoTitle">
+  <title id="logoTitle">Smile Well Medical &amp; Spa</title>
+  <text
+    x="0"
+    y="28"
+    fill="#1d3557"
+    font-family="Georgia, 'Palatino Linotype', Palatino, 'Times New Roman', serif"
+    font-size="28"
+    font-weight="600"
+  >Smile Well</text>
+  <text
+    x="1.5"
+    y="44"
+    fill="#1d3557"
+    fill-opacity="0.5"
+    font-family="Georgia, 'Palatino Linotype', Palatino, 'Times New Roman', serif"
+    font-size="7.5"
+    font-weight="500"
+    letter-spacing="3.15"
+  >MEDICAL &amp; SPA</text>
+</svg>

@@ -30,11 +30,17 @@
               serif: ["Source Serif 4", "Georgia", "serif"],
               sans: ["DM Sans", "system-ui", "sans-serif"],
             },
+            screens: {
+              ipad: "834px",
+            },
           },
         },
       };
     </script>
     <style>
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
       .hp {
         position: absolute;
         left: -10000px;
@@ -48,33 +54,41 @@
         padding: 0 0.28em;
         font-weight: 600;
       }
+      .lift {
+        box-shadow:
+          0 1px 2px rgb(29 53 87 / 0.06),
+          0 12px 28px rgb(29 53 87 / 0.1),
+          0 28px 48px rgb(29 53 87 / 0.06);
+      }
+      input,
+      textarea,
+      button,
+      select,
+      label {
+        touch-action: manipulation;
+      }
       input[type="date"]::-webkit-calendar-picker-indicator {
         cursor: pointer;
         opacity: 0.65;
+        width: 1.25rem;
+        height: 1.25rem;
       }
     </style>
   </head>
   <body class="bg-cream text-ink font-sans antialiased">
-    <header class="border-b border-mist bg-white/90 backdrop-blur-sm sticky top-0 z-20">
-      <div class="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
-        <div>
-          <p class="font-serif text-navy tracking-wide text-sm sm:text-base">Smile Well Medical &amp; Spa</p>
-          <p class="text-[10px] uppercase tracking-[0.18em] text-navy/50">Confidential patient form</p>
-        </div>
-        <a
-          href="#enroll"
-          class="inline-flex items-center rounded-full bg-navy text-white px-4 py-2 text-sm font-medium hover:bg-navy-dark"
-        >
-          Enroll
-        </a>
-      </div>
-    </header>
-
-    <main class="max-w-6xl mx-auto px-5 sm:px-8 py-10 lg:py-14 grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
-      <div class="lg:sticky lg:top-24 space-y-6">
+    <main class="max-w-6xl mx-auto px-5 sm:px-8 ipad:px-10 py-8 md:py-10 lg:py-12 grid lg:grid-cols-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-10 items-start">
+      <div class="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] flex justify-center lg:justify-center">
+        <div class="lift w-full max-w-xl lg:max-w-none text-left rounded-3xl border border-navy/20 bg-white p-6 md:p-8 space-y-5 md:space-y-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto">
+        <img
+          src="logo.svg"
+          alt="Smile Well Medical &amp; Spa"
+          width="180"
+          height="36"
+          class="h-8 ipad:h-9 w-auto"
+        />
         <div>
           <p class="text-navy text-xs font-medium tracking-[0.16em] uppercase mb-2">IV Treatment Membership</p>
-          <h1 class="font-serif font-semibold text-3xl sm:text-4xl text-navy leading-tight mb-3">
+          <h1 class="font-serif font-semibold text-3xl ipad:text-4xl text-navy leading-tight mb-3">
             Membership agreement
           </h1>
           <p class="text-ink/70">
@@ -83,7 +97,8 @@
           </p>
         </div>
 
-        <section class="bg-white border border-mist rounded-2xl p-5 sm:p-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-5">
+        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Membership at a glance</h2>
           <dl class="space-y-3 text-sm">
             <div class="flex justify-between gap-4 border-b border-mist pb-3">
@@ -101,7 +116,7 @@
           </dl>
         </section>
 
-        <section class="bg-white border border-mist rounded-2xl p-5 sm:p-6">
+        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Member benefits</h2>
           <ul class="space-y-3 text-sm">
             <li class="flex gap-3">
@@ -118,20 +133,16 @@
             </li>
           </ul>
         </section>
+        </div>
 
-        <section class="bg-white border border-mist rounded-2xl p-5 sm:p-6">
+        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Key policies</h2>
           <ul class="space-y-3 text-sm text-ink/80">
             <li>
-              Unfulfilled 6-session commitment:
-              <span class="mark">$100 fee</span>
+              Unfulfilled 6-session commitment: $100 fee
             </li>
             <li>
-              Cancellations require
-              <span class="mark">24 hours</span>
-              notice; otherwise a
-              <span class="mark">$50</span>
-              late / no-show fee applies.
+              Cancellations require 24 hours notice; otherwise a $50 late / no-show fee applies.
             </li>
             <li>A valid credit card on file is required for active membership. Card details are collected in clinic — not on this form.</li>
             <li>Discounts are non-transferable and have no cash value.</li>
@@ -139,11 +150,12 @@
             <li>Treatments require clinical assessment, informed consent, and provider approval. Results are not guaranteed.</li>
           </ul>
         </section>
+        </div>
       </div>
 
-      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-6 sm:p-8">
+      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-6 md:p-8">
         <div id="form-panel">
-          <h2 class="font-serif text-2xl text-navy mb-1">Patient information</h2>
+          <h2 class="font-serif text-2xl text-navy mb-1">Client information</h2>
           <p class="text-ink/60 text-sm mb-6">Complete this form to start your 12-month IV membership.</p>
 
           <form id="intake-form" novalidate>
@@ -167,7 +179,7 @@
                   type="text"
                   autocomplete="name"
                   required
-                  class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                  class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                 />
                 <p class="mt-1 text-xs text-red-700 hidden" data-error-for="fullName"></p>
               </div>
@@ -180,7 +192,7 @@
                   type="date"
                   autocomplete="bday"
                   required
-                  class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                  class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                 />
                 <p class="mt-1 text-xs text-red-700 hidden" data-error-for="dob"></p>
               </div>
@@ -196,7 +208,7 @@
                     autocomplete="tel"
                     required
                     placeholder="604-555-0199"
-                    class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="phone"></p>
                 </div>
@@ -209,7 +221,7 @@
                     autocomplete="email"
                     required
                     placeholder="you@email.com"
-                    class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="email"></p>
                 </div>
@@ -223,7 +235,7 @@
                     name="startDate"
                     type="date"
                     required
-                    class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="startDate"></p>
                 </div>
@@ -235,7 +247,7 @@
                     type="date"
                     readonly
                     tabindex="-1"
-                    class="w-full rounded-lg border border-mist bg-navy-soft/60 px-3 py-2.5 text-sm text-ink/70 cursor-default"
+                    class="w-full rounded-xl border border-mist bg-navy-soft/60 px-3.5 py-3 text-base min-h-11 text-ink/70 cursor-default"
                   />
                   <p class="mt-1 text-xs text-ink/50">Automatically 12 months from start date.</p>
                 </div>
@@ -249,19 +261,13 @@
                 name="healthNotes"
                 rows="3"
                 placeholder="Optional — anything clinicians should know before your first IV"
-                class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 resize-y"
+                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 resize-y"
               ></textarea>
-            </div>
-
-            <div class="mb-5 rounded-xl border border-mist bg-cream/40 p-4 text-sm text-ink/80">
-              By signing below, I confirm that I have read, understood, and agree to the
-              <span class="mark">$50 annual fee</span>, the minimum
-              <span class="mark">6-session commitment</span>, and all terms stated in this agreement.
             </div>
 
             <div class="mb-4">
               <label for="signature" class="block text-sm mb-1">
-                Patient signature <span class="text-navy">*</span>
+                Client signature <span class="text-navy">*</span>
                 <span class="text-ink/50 font-normal">— type your full legal name</span>
               </label>
               <input
@@ -270,19 +276,19 @@
                 type="text"
                 autocomplete="off"
                 required
-                class="w-full rounded-lg border border-mist bg-cream/60 px-3 py-2.5 text-sm font-serif italic outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 font-serif italic outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
               />
               <p class="mt-1 text-xs text-red-700 hidden" data-error-for="signature"></p>
             </div>
 
             <div class="space-y-3 mb-6">
-              <label class="flex gap-3 items-start text-sm cursor-pointer">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
                 <input
                   id="agreement"
                   name="agreement"
                   type="checkbox"
                   required
-                  class="mt-1 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I agree to the membership terms, including the $50 + tax annual fee, 6-session minimum, cancellation policy, and medical disclaimer.
@@ -291,13 +297,13 @@
               </label>
               <p class="text-xs text-red-700 hidden" data-error-for="agreement"></p>
 
-              <label class="flex gap-3 items-start text-sm cursor-pointer">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
                 <input
                   id="cardAck"
                   name="cardAck"
                   type="checkbox"
                   required
-                  class="mt-1 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I understand a valid credit card must be placed on file at the clinic to keep this membership active.
@@ -306,13 +312,13 @@
               </label>
               <p class="text-xs text-red-700 hidden" data-error-for="cardAck"></p>
 
-              <label class="flex gap-3 items-start text-sm cursor-pointer">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
                 <input
                   id="consent"
                   name="consent"
                   type="checkbox"
                   required
-                  class="mt-1 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I agree to be contacted by phone, SMS, or email about this membership and my IV treatments.
@@ -327,7 +333,7 @@
             <button
               id="submit-btn"
               type="submit"
-              class="w-full rounded-full bg-navy text-white py-3 text-sm font-medium hover:bg-navy-dark disabled:opacity-60 disabled:cursor-not-allowed transition"
+              class="w-full min-h-12 rounded-full bg-navy text-white py-3.5 text-base font-medium hover:bg-navy-dark disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
               Submit membership agreement
             </button>
