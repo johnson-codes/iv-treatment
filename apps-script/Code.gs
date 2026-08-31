@@ -1,0 +1,231 @@
+/**
+ * IV Treatment lead capture — Google Apps Script backend
+ *
+ * SETUP (run once in the Google Sheet):
+ * 1. Create a Google Sheet named however you like.
+ * 2. Extensions → Apps Script, paste this file as Code.gs.
+ * 3. Select setup in the function dropdown and click Run. Approve permissions.
+ * 4. Deploy → New deployment → Type: Web app
+ *      Execute as: Me
+ *      Who has access: Anyone
+ * 5. Copy the Web app URL into form.js as WEBHOOK_URL, then redeploy the site.
+ */
+
+var SHEET_NAME = 'Leads';
+var ID_PREFIX = 'IV';
+var LOCK_TIMEOUT_MS = 10000;
+var MAX_TEXT = 2000;
+var PACKAGES = [
+  'Hydration Boost',
+  'Immunity Glow',
+  'NAD+ Infusion',
+  'Energy & Performance'
+];
+var TIME_WINDOWS = ['Morning', 'Afternoon', 'Evening'];
+var HEADERS = [
+  'Submission_ID',
+  'Timestamp',
+  'Full_Name',
+  'Phone',
+  'Email',
+  'Selected_Package',
+  'Preferred_Date',
+  'Health_Notes',
+  'Lead_Status',
+  'UTM_Source',
+  'UTM_Campaign',
+  'Internal_Notes'
+];
+
+function setup() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+  }
+
+  var firstHeader = String(sheet.getRange(1, 1).getValue());
+  if (firstHeader !== 'Submission_ID') {
+    if (sheet.getLastRow() > 0) {
+      sheet.insertRowBefore(1);
+    }
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  }
+  sheet.getRange(1, 1, 1, HEADERS.length)
+    .setFontWeight('bold')
+    .setBackground('#2f6f64')
+    .setFontColor('#ffffff');
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidth(1, 140);
+  sheet.setColumnWidth(2, 170);
+  sheet.setColumnWidth(3, 180);
+  sheet.setColumnWidth(4, 150);
+  sheet.setColumnWidth(5, 220);
+  sheet.setColumnWidth(6, 180);
+  sheet.setColumnWidth(7, 180);
+  sheet.setColumnWidth(8, 260);
+  sheet.setColumnWidth(9, 120);
+  sheet.setColumnWidth(10, 140);
+  sheet.setColumnWidth(11, 160);
+  sheet.setColumnWidth(12, 240);
+
+  var statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['New', 'Contacted', 'Booked', 'Closed'], true)
+    .setAllowInvalid(false)
+    .build();
+  sheet.getRange('I2:I').setDataValidation(statusRule);
+
+  var packageRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(PACKAGES, true)
+    .setAllowInvalid(true)
+    .build();
+  sheet.getRange('F2:F').setDataValidation(packageRule);
+}
+
+function doGet() {
+  return jsonResponse_({ ok: true, service: 'iv-treatment-intake' });
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
+      return jsonResponse_({ ok: false, error: 'Busy, please try again.' });
+    }
+
+    var data = parseBody_(e);
+    if (isSpam_(data)) {
+      return jsonResponse_({ ok: true, id: 'IV-OK' });
+    }
+
+    var error = validate_(data);
+    if (error) {
+      return jsonResponse_({ ok: false, error: error });
+    }
+
+    var sheet = getSheet_();
+    var id = nextId_(sheet);
+    var timezone = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'America/Vancouver';
+    var timestamp = Utilities.formatDate(new Date(), timezone, 'yyyy-MM-dd HH:mm:ss');
+    var utmSource = compact_([sanitize_(data.utm_source, 120), sanitize_(data.utm_medium, 120)], ' / ');
+
+    sheet.appendRow([
+      id,
+      timestamp,
+      sanitize_(data.fullName, 120),
+      sanitize_(data.phone, 40),
+      sanitize_(String(data.email || '').toLowerCase(), 120),
+      sanitize_(data.package, 80),
+      sanitize_(data.preferredDate, 20) + ' (' + sanitize_(data.timeWindow, 20) + ')',
+      sanitize_(data.healthNotes, MAX_TEXT),
+      'New',
+      utmSource,
+      sanitize_(data.utm_campaign, 120),
+      ''
+    ]);
+
+    return jsonResponse_({ ok: true, id: id });
+  } catch (err) {
+    return jsonResponse_({ ok: false, error: 'Server error' });
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (releaseErr) {
+      // lock may not have been acquired
+    }
+  }
+}
+
+function getSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    setup();
+    sheet = ss.getSheetByName(SHEET_NAME);
+  }
+  return sheet;
+}
+
+function parseBody_(e) {
+  if (!e || !e.postData || !e.postData.contents) {
+    throw new Error('Empty body');
+  }
+  var parsed = JSON.parse(e.postData.contents);
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid JSON');
+  }
+  return parsed;
+}
+
+function isSpam_(data) {
+  return Boolean(sanitize_(data.honeypot || data.company_website, 200));
+}
+
+function validate_(data) {
+  if (!data.fullName || String(data.fullName).trim().length < 2) {
+    return 'Invalid name';
+  }
+  var digits = String(data.phone || '').replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 15) {
+    return 'Invalid phone';
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || ''))) {
+    return 'Invalid email';
+  }
+  if (PACKAGES.indexOf(data.package) === -1) {
+    return 'Invalid package';
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.preferredDate || ''))) {
+    return 'Invalid date';
+  }
+  if (TIME_WINDOWS.indexOf(data.timeWindow) === -1) {
+    return 'Invalid time window';
+  }
+  if (data.consent !== true && data.consent !== 'true') {
+    return 'Consent required';
+  }
+  return '';
+}
+
+function nextId_(sheet) {
+  var year = new Date().getFullYear();
+  var lastRow = sheet.getLastRow();
+  var seq = 1;
+  if (lastRow > 1) {
+    var lastId = String(sheet.getRange(lastRow, 1).getValue());
+    var match = lastId.match(/^IV-(\d{4})-(\d+)$/);
+    if (match && Number(match[1]) === year) {
+      seq = Number(match[2]) + 1;
+    }
+  }
+  return ID_PREFIX + '-' + year + '-' + pad_(seq, 4);
+}
+
+function sanitize_(value, maxLen) {
+  var text = value == null ? '' : String(value);
+  text = text.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (text.length > maxLen) {
+    text = text.slice(0, maxLen);
+  }
+  return text;
+}
+
+function compact_(parts, joiner) {
+  var kept = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i]) kept.push(parts[i]);
+  }
+  return kept.join(joiner);
+}
+
+function pad_(num, width) {
+  var s = String(num);
+  while (s.length < width) s = '0' + s;
+  return s;
+}
+
+function jsonResponse_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
