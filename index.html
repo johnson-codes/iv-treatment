@@ -31,7 +31,8 @@
               sans: ["DM Sans", "system-ui", "sans-serif"],
             },
             screens: {
-              ipad: "834px",
+              ipad: "820px",
+              ipadland: { raw: "(min-width: 1024px) and (max-height: 900px)" },
             },
           },
         },
@@ -67,28 +68,53 @@
       label {
         touch-action: manipulation;
       }
+      /* Native iOS date fields have a large intrinsic width; force them to shrink. */
+      input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        display: block;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
+        font-size: 1rem;
+      }
+      input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
+        min-width: 0;
+      }
       input[type="date"]::-webkit-calendar-picker-indicator {
         cursor: pointer;
         opacity: 0.65;
         width: 1.25rem;
         height: 1.25rem;
+        flex-shrink: 0;
+      }
+      /* Keep native controls at ≥16px so iOS does not zoom on focus */
+      input:not([type="checkbox"]):not([type="hidden"]),
+      textarea,
+      select {
+        font-size: 1rem;
+      }
+      .terms-panel {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
       }
     </style>
   </head>
   <body class="bg-cream text-ink font-sans antialiased">
-    <main class="max-w-6xl mx-auto px-5 sm:px-8 ipad:px-10 py-8 md:py-10 lg:py-12 grid lg:grid-cols-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 lg:gap-10 items-start">
-      <div class="lg:sticky lg:top-6 lg:max-h-[calc(100dvh-3rem)] flex justify-center lg:justify-center">
-        <div class="lift w-full max-w-xl lg:max-w-none text-left rounded-3xl border border-navy/20 bg-white p-6 md:p-8 space-y-5 md:space-y-6 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto">
+    <main class="max-w-6xl mx-auto px-5 sm:px-8 ipad:px-10 py-8 md:py-10 lg:py-8 ipadland:py-0 xl:py-12 grid lg:grid-cols-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 ipad:gap-10 lg:gap-8 xl:gap-10 items-start">
+      <div class="lg:sticky lg:top-0 lg:self-start lg:max-h-[100dvh] flex justify-center min-h-0">
+        <div class="lift terms-panel w-full max-w-xl ipad:max-w-2xl lg:max-w-none text-left rounded-3xl border border-navy/20 bg-white p-6 ipad:p-7 lg:p-8 ipadland:p-6 space-y-5 ipad:space-y-6 lg:max-h-[100dvh] lg:overflow-y-auto">
         <img
           src="logo.svg"
           alt="Smile Well Medical &amp; Spa"
           width="180"
           height="36"
-          class="h-8 ipad:h-9 w-auto"
+          class="h-7 sm:h-8 lg:h-9 w-auto"
         />
         <div>
           <p class="text-navy text-xs font-medium tracking-[0.16em] uppercase mb-2">IV Treatment Membership</p>
-          <h1 class="font-serif font-semibold text-3xl ipad:text-4xl text-navy leading-tight mb-3">
+          <h1 class="font-serif font-semibold text-3xl lg:text-4xl text-navy leading-tight mb-3">
             Membership agreement
           </h1>
           <p class="text-ink/70">
@@ -97,8 +123,8 @@
           </p>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-1 gap-4 md:gap-5">
-        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
+        <div class="grid md:grid-cols-2 lg:grid-cols-1 gap-4 ipad:gap-5">
+        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6 ipad:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Membership at a glance</h2>
           <dl class="space-y-3 text-sm">
             <div class="flex justify-between gap-4 border-b border-mist pb-3">
@@ -153,10 +179,10 @@
         </div>
       </div>
 
-      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-6 md:p-8">
+      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-6 ipad:p-7 lg:p-8 w-full max-w-xl ipad:max-w-2xl lg:max-w-none mx-auto min-w-0">
         <div id="form-panel">
           <h2 class="font-serif text-2xl text-navy mb-1">Client information</h2>
-          <p class="text-ink/60 text-sm mb-6">Complete this form to start your 12-month IV membership.</p>
+          <p class="text-ink/60 text-sm mb-6 ipad:mb-7">Complete this form to start your 12-month IV membership.</p>
 
           <form id="intake-form" novalidate>
             <div class="hp" aria-hidden="true">
@@ -170,7 +196,7 @@
               />
             </div>
 
-            <div class="space-y-4 mb-6">
+            <div class="space-y-4 ipad:space-y-5 mb-6 min-w-0">
               <div>
                 <label for="fullName" class="block text-sm mb-1">Full name <span class="text-navy">*</span></label>
                 <input
@@ -179,7 +205,7 @@
                   type="text"
                   autocomplete="name"
                   required
-                  class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                  class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                 />
                 <p class="mt-1 text-xs text-red-700 hidden" data-error-for="fullName"></p>
               </div>
@@ -192,13 +218,13 @@
                   type="date"
                   autocomplete="bday"
                   required
-                  class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                  class="min-w-0 w-full max-w-full appearance-none rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                 />
                 <p class="mt-1 text-xs text-red-700 hidden" data-error-for="dob"></p>
               </div>
 
-              <div class="grid sm:grid-cols-2 gap-4">
-                <div>
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 ipad:gap-5 min-w-0">
+                <div class="min-w-0 overflow-hidden">
                   <label for="phone" class="block text-sm mb-1">Phone <span class="text-navy">*</span></label>
                   <input
                     id="phone"
@@ -208,11 +234,11 @@
                     autocomplete="tel"
                     required
                     placeholder="604-555-0199"
-                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="min-w-0 w-full max-w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="phone"></p>
                 </div>
-                <div>
+                <div class="min-w-0 overflow-hidden">
                   <label for="email" class="block text-sm mb-1">Email <span class="text-navy">*</span></label>
                   <input
                     id="email"
@@ -221,25 +247,25 @@
                     autocomplete="email"
                     required
                     placeholder="you@email.com"
-                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="min-w-0 w-full max-w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="email"></p>
                 </div>
               </div>
 
-              <div class="grid sm:grid-cols-2 gap-4">
-                <div>
+              <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 ipad:gap-5 min-w-0">
+                <div class="min-w-0 overflow-hidden">
                   <label for="startDate" class="block text-sm mb-1">Start date <span class="text-navy">*</span></label>
                   <input
                     id="startDate"
                     name="startDate"
                     type="date"
                     required
-                    class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                    class="min-w-0 w-full max-w-full appearance-none rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
                   />
                   <p class="mt-1 text-xs text-red-700 hidden" data-error-for="startDate"></p>
                 </div>
-                <div>
+                <div class="min-w-0 overflow-hidden">
                   <label for="expiryDate" class="block text-sm mb-1">Expiry date</label>
                   <input
                     id="expiryDate"
@@ -247,7 +273,7 @@
                     type="date"
                     readonly
                     tabindex="-1"
-                    class="w-full rounded-xl border border-mist bg-navy-soft/60 px-3.5 py-3 text-base min-h-11 text-ink/70 cursor-default"
+                    class="min-w-0 w-full max-w-full appearance-none rounded-xl border border-mist bg-navy-soft/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 text-ink/70 cursor-default"
                   />
                   <p class="mt-1 text-xs text-ink/50">Automatically 12 months from start date.</p>
                 </div>
@@ -261,7 +287,7 @@
                 name="healthNotes"
                 rows="3"
                 placeholder="Optional — anything clinicians should know before your first IV"
-                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 resize-y"
+                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 resize-y"
               ></textarea>
             </div>
 
@@ -276,19 +302,19 @@
                 type="text"
                 autocomplete="off"
                 required
-                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-11 font-serif italic outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 font-serif italic outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
               />
               <p class="mt-1 text-xs text-red-700 hidden" data-error-for="signature"></p>
             </div>
 
-            <div class="space-y-3 mb-6">
-              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
+            <div class="space-y-1 ipad:space-y-2 mb-6">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11 py-2.5">
                 <input
                   id="agreement"
                   name="agreement"
                   type="checkbox"
                   required
-                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-6 shrink-0 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I agree to the membership terms, including the $50 + tax annual fee, 6-session minimum, cancellation policy, and medical disclaimer.
@@ -297,13 +323,13 @@
               </label>
               <p class="text-xs text-red-700 hidden" data-error-for="agreement"></p>
 
-              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11 py-2.5">
                 <input
                   id="cardAck"
                   name="cardAck"
                   type="checkbox"
                   required
-                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-6 shrink-0 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I understand a valid credit card must be placed on file at the clinic to keep this membership active.
@@ -312,13 +338,13 @@
               </label>
               <p class="text-xs text-red-700 hidden" data-error-for="cardAck"></p>
 
-              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11">
+              <label class="flex gap-3 items-start text-sm cursor-pointer min-h-11 py-2.5">
                 <input
                   id="consent"
                   name="consent"
                   type="checkbox"
                   required
-                  class="mt-0.5 size-5 rounded border-mist text-navy focus:ring-navy"
+                  class="mt-0.5 size-6 shrink-0 rounded border-mist text-navy focus:ring-navy"
                 />
                 <span>
                   I agree to be contacted by phone, SMS, or email about this membership and my IV treatments.
@@ -333,7 +359,7 @@
             <button
               id="submit-btn"
               type="submit"
-              class="w-full min-h-12 rounded-full bg-navy text-white py-3.5 text-base font-medium hover:bg-navy-dark disabled:opacity-60 disabled:cursor-not-allowed transition"
+              class="w-full min-h-12 ipad:min-h-14 rounded-full bg-navy text-white py-3.5 ipad:py-4 text-base font-medium hover:bg-navy-dark disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
               Submit membership agreement
             </button>
@@ -358,7 +384,7 @@
           <button
             id="another-request"
             type="button"
-            class="mt-8 text-sm text-navy hover:underline"
+            class="mt-8 min-h-11 px-4 inline-flex items-center justify-center text-sm text-navy hover:underline"
           >
             Submit another agreement
           </button>
@@ -366,7 +392,7 @@
       </div>
     </main>
 
-    <footer class="border-t border-mist px-5 sm:px-8 py-6 text-xs text-ink/50">
+    <footer class="border-t border-mist px-5 sm:px-8 ipad:px-10 py-6 text-xs text-ink/50">
       <div class="max-w-6xl mx-auto">
         Smile Well Medical &amp; Spa · IV Treatment Membership Agreement · Please retain a copy for your records.
       </div>
