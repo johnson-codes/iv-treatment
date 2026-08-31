@@ -55,7 +55,14 @@
         font-weight: 600;
         padding: 0;
         background: none;
-        border-bottom: 1px solid rgba(196, 160, 53, 0.45);
+        display: inline;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        text-decoration: underline;
+        text-decoration-color: rgba(196, 160, 53, 0.45);
+        text-underline-offset: 0.18em;
+        text-decoration-thickness: 1px;
       }
       .lift {
         box-shadow:
@@ -125,47 +132,49 @@
           </p>
         </div>
 
-        <div class="grid grid-cols-1 ipad:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-1 gap-4 ipad:gap-5">
-        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6 ipad:p-6">
-          <h2 class="font-serif text-lg text-navy mb-4">Membership at a glance</h2>
-          <dl class="space-y-3 text-sm">
-            <div class="flex justify-between gap-4 border-b border-mist pb-3">
-              <dt class="text-ink/60">Annual fee</dt>
-              <dd><span class="mark">$50 + tax</span> <span class="text-ink/50">non-refundable</span></dd>
+        <div class="grid grid-cols-1 gap-4">
+        <section class="min-w-0 w-full overflow-hidden bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6 ipad:p-6">
+          <h2 class="font-serif text-lg text-navy mb-4 min-w-0 max-w-full break-words">Membership at a glance</h2>
+          <dl class="space-y-3 text-sm min-w-0 max-w-full">
+            <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 items-baseline border-b border-mist pb-3 min-w-0">
+              <dt class="text-ink/60 min-w-0">Annual fee</dt>
+              <dd class="text-left sm:text-right min-w-0 max-w-full break-words">
+                <span class="mark">$50 + tax</span> <span class="text-ink/50 whitespace-nowrap">non-refundable</span>
+              </dd>
             </div>
-            <div class="flex justify-between gap-4 border-b border-mist pb-3">
-              <dt class="text-ink/60">Term</dt>
-              <dd>12 months from start date</dd>
+            <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 items-baseline border-b border-mist pb-3 min-w-0">
+              <dt class="text-ink/60 min-w-0">Term</dt>
+              <dd class="text-left sm:text-right min-w-0 max-w-full break-words">12 months from start date</dd>
             </div>
-            <div class="flex justify-between gap-4">
-              <dt class="text-ink/60">Session commitment</dt>
-              <dd class="text-right">Minimum <span class="mark">6 IV sessions</span> within the term</dd>
+            <div class="grid grid-cols-1 sm:grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 items-baseline min-w-0">
+              <dt class="text-ink/60 min-w-0">Session commitment</dt>
+              <dd class="text-left sm:text-right min-w-0 max-w-full break-words">Minimum <span class="mark">6 IV sessions</span> within the term</dd>
             </div>
           </dl>
         </section>
 
-        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
-          <h2 class="font-serif text-lg text-navy mb-4">Member benefits</h2>
-          <ul class="space-y-3 text-sm">
-            <li class="flex gap-3">
-              <span class="mark shrink-0">20% OFF</span>
-              <span>all IV treatments</span>
+        <section class="min-w-0 w-full overflow-hidden bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
+          <h2 class="font-serif text-lg text-navy mb-4 min-w-0 max-w-full break-words">Member benefits</h2>
+          <ul class="space-y-3 text-sm min-w-0 max-w-full">
+            <li class="flex flex-col gap-1 min-w-0 max-w-full">
+              <span class="mark">20% OFF</span>
+              <span class="min-w-0 max-w-full break-words">all IV treatments</span>
             </li>
-            <li class="flex gap-3">
-              <span class="mark shrink-0">10% OFF</span>
-              <span>chiropractic care, acupuncture, and tooth scaling</span>
+            <li class="flex flex-col gap-1 min-w-0 max-w-full">
+              <span class="mark">10% OFF</span>
+              <span class="min-w-0 max-w-full break-words">chiropractic care, acupuncture, and tooth scaling</span>
             </li>
-            <li class="flex gap-3">
-              <span class="mark shrink-0">PRIORITY BOOKING</span>
-              <span>for available appointment times</span>
+            <li class="flex flex-col gap-1 min-w-0 max-w-full">
+              <span class="mark">PRIORITY BOOKING</span>
+              <span class="min-w-0 max-w-full break-words">for available appointment times</span>
             </li>
           </ul>
         </section>
         </div>
 
-        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
-          <h2 class="font-serif text-lg text-navy mb-4">Key policies</h2>
-          <ul class="space-y-3 text-sm text-ink/80">
+        <section class="min-w-0 w-full overflow-hidden bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
+          <h2 class="font-serif text-lg text-navy mb-4 min-w-0 max-w-full break-words">Key policies</h2>
+          <ul class="space-y-3 text-sm text-ink/80 min-w-0 max-w-full break-words">
             <li>
               Unfulfilled 6-session commitment: $100 fee
             </li>
