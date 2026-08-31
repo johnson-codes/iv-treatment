@@ -2,7 +2,8 @@
  * Smile Well IV membership intake.
  * Paste the Google Apps Script Web App URL below after you deploy the backend.
  */
-const WEBHOOK_URL = "";
+const WEBHOOK_URL =
+  "https://script.google.com/macros/s/AKfycbxh_7LqirydQHGSSxF4r3jcs5WKEDMHAT-3BiQIg5wmwCpsS9PjrCijozryZYpHOMtzeg/exec";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_AGE = 18;
@@ -224,6 +225,9 @@ function buildPayload(values) {
     email: values.email.toLowerCase(),
     startDate: values.startDate,
     expiryDate: values.expiryDate,
+    package: "IV Treatment Membership",
+    preferredDate: values.startDate,
+    timeWindow: "Membership term",
     healthNotes: values.healthNotes,
     signature: values.signature,
     agreement: true,
