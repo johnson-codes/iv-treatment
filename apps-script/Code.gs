@@ -1,8 +1,8 @@
 /**
- * IV Treatment lead capture — Google Apps Script backend
+ * Smile Well IV membership — Google Apps Script backend
  *
  * SETUP (run once in the Google Sheet):
- * 1. Create a Google Sheet named however you like.
+ * 1. Create a Google Sheet.
  * 2. Extensions → Apps Script, paste this file as Code.gs.
  * 3. Select setup in the function dropdown and click Run. Approve permissions.
  * 4. Deploy → New deployment → Type: Web app
@@ -11,25 +11,24 @@
  * 5. Copy the Web app URL into form.js as WEBHOOK_URL, then redeploy the site.
  */
 
-var SHEET_NAME = 'Leads';
+var SHEET_NAME = 'Memberships';
 var ID_PREFIX = 'IV';
 var LOCK_TIMEOUT_MS = 10000;
 var MAX_TEXT = 2000;
-var PACKAGES = [
-  'Hydration Boost',
-  'Immunity Glow',
-  'NAD+ Infusion',
-  'Energy & Performance'
-];
-var TIME_WINDOWS = ['Morning', 'Afternoon', 'Evening'];
+var MIN_AGE = 18;
 var HEADERS = [
   'Submission_ID',
   'Timestamp',
   'Full_Name',
+  'Date_of_Birth',
   'Phone',
   'Email',
-  'Selected_Package',
-  'Preferred_Date',
+  'Start_Date',
+  'Expiry_Date',
+  'Signature',
+  'Agreement_Accepted',
+  'Card_On_File_Ack',
+  'Contact_Consent',
   'Health_Notes',
   'Lead_Status',
   'UTM_Source',
@@ -50,40 +49,31 @@ function setup() {
       sheet.insertRowBefore(1);
     }
     sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  } else if (sheet.getLastColumn() < HEADERS.length) {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   }
+
   sheet.getRange(1, 1, 1, HEADERS.length)
     .setFontWeight('bold')
-    .setBackground('#2f6f64')
+    .setBackground('#1d3557')
     .setFontColor('#ffffff');
   sheet.setFrozenRows(1);
-  sheet.setColumnWidth(1, 140);
-  sheet.setColumnWidth(2, 170);
-  sheet.setColumnWidth(3, 180);
-  sheet.setColumnWidth(4, 150);
-  sheet.setColumnWidth(5, 220);
-  sheet.setColumnWidth(6, 180);
-  sheet.setColumnWidth(7, 180);
-  sheet.setColumnWidth(8, 260);
-  sheet.setColumnWidth(9, 120);
-  sheet.setColumnWidth(10, 140);
-  sheet.setColumnWidth(11, 160);
-  sheet.setColumnWidth(12, 240);
 
+  var widths = [140, 170, 180, 130, 150, 220, 120, 120, 180, 150, 140, 140, 260, 120, 140, 160, 240];
+  for (var i = 0; i < widths.length; i++) {
+    sheet.setColumnWidth(i + 1, widths[i]);
+  }
+
+  var statusCol = col_('Lead_Status');
   var statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['New', 'Contacted', 'Booked', 'Closed'], true)
+    .requireValueInList(['New', 'Contacted', 'Active', 'Expired', 'Closed'], true)
     .setAllowInvalid(false)
     .build();
-  sheet.getRange('I2:I').setDataValidation(statusRule);
-
-  var packageRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(PACKAGES, true)
-    .setAllowInvalid(true)
-    .build();
-  sheet.getRange('F2:F').setDataValidation(packageRule);
+  sheet.getRange(2, statusCol, Math.max(sheet.getMaxRows() - 1, 1), 1).setDataValidation(statusRule);
 }
 
 function doGet() {
-  return jsonResponse_({ ok: true, service: 'iv-treatment-intake' });
+  return jsonResponse_({ ok: true, service: 'smile-well-iv-membership' });
 }
 
 function doPost(e) {
@@ -103,6 +93,8 @@ function doPost(e) {
       return jsonResponse_({ ok: false, error: error });
     }
 
+    var startDate = sanitize_(data.startDate, 20);
+    var expiryDate = addYearsISO_(startDate, 1);
     var sheet = getSheet_();
     var id = nextId_(sheet);
     var timezone = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'America/Vancouver';
@@ -113,10 +105,15 @@ function doPost(e) {
       id,
       timestamp,
       sanitize_(data.fullName, 120),
+      sanitize_(data.dob, 20),
       sanitize_(data.phone, 40),
       sanitize_(String(data.email || '').toLowerCase(), 120),
-      sanitize_(data.package, 80),
-      sanitize_(data.preferredDate, 20) + ' (' + sanitize_(data.timeWindow, 20) + ')',
+      startDate,
+      expiryDate,
+      sanitize_(data.signature, 120),
+      'Yes',
+      'Yes',
+      'Yes',
       sanitize_(data.healthNotes, MAX_TEXT),
       'New',
       utmSource,
@@ -124,7 +121,7 @@ function doPost(e) {
       ''
     ]);
 
-    return jsonResponse_({ ok: true, id: id });
+    return jsonResponse_({ ok: true, id: id, expiryDate: expiryDate });
   } catch (err) {
     return jsonResponse_({ ok: false, error: 'Server error' });
   } finally {
@@ -162,28 +159,28 @@ function isSpam_(data) {
 }
 
 function validate_(data) {
-  if (!data.fullName || String(data.fullName).trim().length < 2) {
-    return 'Invalid name';
-  }
+  var name = String(data.fullName || '').trim();
+  if (name.length < 2) return 'Invalid name';
+
+  var dob = String(data.dob || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return 'Invalid date of birth';
+  if (ageOn_(dob, todayISO_()) < MIN_AGE) return 'Must be 18 or older';
+
   var digits = String(data.phone || '').replace(/\D/g, '');
-  if (digits.length < 10 || digits.length > 15) {
-    return 'Invalid phone';
+  if (digits.length < 10 || digits.length > 15) return 'Invalid phone';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || ''))) return 'Invalid email';
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.startDate || ''))) return 'Invalid start date';
+
+  var signature = String(data.signature || '').trim();
+  if (!signature) return 'Signature required';
+  if (signature.toLowerCase().replace(/\s+/g, ' ') !== name.toLowerCase().replace(/\s+/g, ' ')) {
+    return 'Signature must match full name';
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email || ''))) {
-    return 'Invalid email';
-  }
-  if (PACKAGES.indexOf(data.package) === -1) {
-    return 'Invalid package';
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data.preferredDate || ''))) {
-    return 'Invalid date';
-  }
-  if (TIME_WINDOWS.indexOf(data.timeWindow) === -1) {
-    return 'Invalid time window';
-  }
-  if (data.consent !== true && data.consent !== 'true') {
-    return 'Consent required';
-  }
+
+  if (data.agreement !== true && data.agreement !== 'true') return 'Agreement required';
+  if (data.cardAck !== true && data.cardAck !== 'true') return 'Card acknowledgement required';
+  if (data.consent !== true && data.consent !== 'true') return 'Consent required';
   return '';
 }
 
@@ -199,6 +196,29 @@ function nextId_(sheet) {
     }
   }
   return ID_PREFIX + '-' + year + '-' + pad_(seq, 4);
+}
+
+function todayISO_() {
+  return Utilities.formatDate(new Date(), SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'America/Vancouver', 'yyyy-MM-dd');
+}
+
+function ageOn_(dobISO, onISO) {
+  var dob = dobISO.split('-').map(Number);
+  var on = onISO.split('-').map(Number);
+  var age = on[0] - dob[0];
+  if (on[1] < dob[1] || (on[1] === dob[1] && on[2] < dob[2])) age -= 1;
+  return age;
+}
+
+function addYearsISO_(iso, years) {
+  var parts = iso.split('-').map(Number);
+  var end = new Date(parts[0] + years, parts[1] - 1, parts[2]);
+  if (end.getMonth() !== parts[1] - 1) end.setDate(0);
+  return end.getFullYear() + '-' + pad_(end.getMonth() + 1, 2) + '-' + pad_(end.getDate(), 2);
+}
+
+function col_(name) {
+  return HEADERS.indexOf(name) + 1;
 }
 
 function sanitize_(value, maxLen) {
