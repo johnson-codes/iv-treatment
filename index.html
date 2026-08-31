@@ -51,9 +51,11 @@
         overflow: hidden;
       }
       .mark {
-        background: #f6e27a;
-        padding: 0 0.28em;
+        color: #c4a035;
         font-weight: 600;
+        padding: 0;
+        background: none;
+        border-bottom: 1px solid rgba(196, 160, 53, 0.45);
       }
       .lift {
         box-shadow:
@@ -102,9 +104,9 @@
     </style>
   </head>
   <body class="bg-cream text-ink font-sans antialiased">
-    <main class="max-w-6xl mx-auto px-5 sm:px-8 ipad:px-10 py-8 md:py-10 lg:py-8 ipadland:py-0 xl:py-12 grid lg:grid-cols-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 ipad:gap-10 lg:gap-8 xl:gap-10 items-start">
-      <div class="lg:sticky lg:top-0 lg:self-start lg:max-h-[100dvh] flex justify-center min-h-0">
-        <div class="lift terms-panel w-full max-w-xl ipad:max-w-2xl lg:max-w-none text-left rounded-3xl border border-navy/20 bg-white p-6 ipad:p-7 lg:p-8 ipadland:p-6 space-y-5 ipad:space-y-6 lg:max-h-[100dvh] lg:overflow-y-auto">
+    <main class="max-w-6xl mx-auto px-4 sm:px-8 ipad:px-10 py-8 md:py-10 lg:py-8 ipadland:py-0 xl:py-12 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-8 ipad:gap-10 lg:gap-8 xl:gap-10 items-start">
+      <div class="lg:sticky lg:top-0 lg:self-start lg:max-h-[100dvh] w-full min-w-0">
+        <div class="lift terms-panel w-full min-w-0 text-left rounded-3xl border border-navy/20 bg-white p-5 sm:p-6 ipad:p-7 lg:p-8 ipadland:p-6 space-y-5 ipad:space-y-6 lg:max-h-[100dvh] lg:overflow-y-auto">
         <img
           src="logo.svg"
           alt="Smile Well Medical &amp; Spa"
@@ -123,8 +125,8 @@
           </p>
         </div>
 
-        <div class="grid md:grid-cols-2 lg:grid-cols-1 gap-4 ipad:gap-5">
-        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6 ipad:p-6">
+        <div class="grid grid-cols-1 ipad:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-1 gap-4 ipad:gap-5">
+        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6 ipad:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Membership at a glance</h2>
           <dl class="space-y-3 text-sm">
             <div class="flex justify-between gap-4 border-b border-mist pb-3">
@@ -142,7 +144,7 @@
           </dl>
         </section>
 
-        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
+        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Member benefits</h2>
           <ul class="space-y-3 text-sm">
             <li class="flex gap-3">
@@ -161,7 +163,7 @@
         </section>
         </div>
 
-        <section class="bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
+        <section class="w-full min-w-0 bg-cream/70 border border-navy/10 rounded-2xl p-5 sm:p-6">
           <h2 class="font-serif text-lg text-navy mb-4">Key policies</h2>
           <ul class="space-y-3 text-sm text-ink/80">
             <li>
@@ -179,7 +181,7 @@
         </div>
       </div>
 
-      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-6 ipad:p-7 lg:p-8 w-full max-w-xl ipad:max-w-2xl lg:max-w-none mx-auto min-w-0">
+      <div id="enroll" class="bg-white border border-mist rounded-2xl shadow-sm p-5 sm:p-6 ipad:p-7 lg:p-8 w-full min-w-0">
         <div id="form-panel">
           <h2 class="font-serif text-2xl text-navy mb-1">Client information</h2>
           <p class="text-ink/60 text-sm mb-6 ipad:mb-7">Complete this form to start your 12-month IV membership.</p>
@@ -278,6 +280,49 @@
                   <p class="mt-1 text-xs text-ink/50">Automatically 12 months from start date.</p>
                 </div>
               </div>
+
+              <fieldset>
+                <legend class="block text-sm mb-2">Where did you hear about us? <span class="text-navy">*</span></legend>
+                <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 min-w-0" role="radiogroup" aria-required="true">
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Google" class="size-5 shrink-0 text-navy focus:ring-navy" required />
+                    <span>Google</span>
+                  </label>
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Instagram" class="size-5 shrink-0 text-navy focus:ring-navy" />
+                    <span>Instagram</span>
+                  </label>
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Facebook" class="size-5 shrink-0 text-navy focus:ring-navy" />
+                    <span>Facebook</span>
+                  </label>
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Walk-in" class="size-5 shrink-0 text-navy focus:ring-navy" />
+                    <span>Walk-in</span>
+                  </label>
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Friend / family" class="size-5 shrink-0 text-navy focus:ring-navy" />
+                    <span>Friend / family</span>
+                  </label>
+                  <label class="flex items-center gap-3 w-full min-w-0 min-h-11 cursor-pointer rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-sm has-[:checked]:border-navy has-[:checked]:bg-navy-soft/60 has-[:checked]:ring-2 has-[:checked]:ring-navy/15">
+                    <input type="radio" name="hearAbout" value="Other" class="size-5 shrink-0 text-navy focus:ring-navy" />
+                    <span>Other</span>
+                  </label>
+                </div>
+                <p class="mt-1 text-xs text-red-700 hidden" data-error-for="hearAbout"></p>
+                <div id="hearAbout-other-wrap" class="hidden mt-3">
+                  <label for="hearAboutOther" class="block text-sm mb-1">Please specify <span class="text-ink/50 font-normal">(optional)</span></label>
+                  <input
+                    id="hearAboutOther"
+                    name="hearAboutOther"
+                    type="text"
+                    maxlength="120"
+                    autocomplete="off"
+                    placeholder="e.g. a flyer, another clinic"
+                    class="w-full min-w-0 rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-11 ipad:min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+                  />
+                </div>
+              </fieldset>
             </div>
 
             <div class="mb-6">

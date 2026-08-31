@@ -7,6 +7,14 @@ const WEBHOOK_URL =
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_AGE = 18;
+const HEAR_ABOUT_OPTIONS = [
+  "Google",
+  "Instagram",
+  "Facebook",
+  "Walk-in",
+  "Friend / family",
+  "Other",
+];
 
 const form = document.getElementById("intake-form");
 const submitBtn = document.getElementById("submit-btn");
@@ -18,6 +26,8 @@ const successTermEl = document.getElementById("success-term");
 const dobInput = document.getElementById("dob");
 const startInput = document.getElementById("startDate");
 const expiryInput = document.getElementById("expiryDate");
+const hearAboutOtherWrap = document.getElementById("hearAbout-other-wrap");
+const hearAboutOtherInput = document.getElementById("hearAboutOther");
 
 let submitting = false;
 let lastTerm = "";
@@ -68,6 +78,17 @@ function syncExpiry() {
   expiryInput.value = addYearsISO(startInput.value, 1);
 }
 
+function selectedHearAbout() {
+  const checked = form.querySelector('[name="hearAbout"]:checked');
+  return checked ? checked.value : "";
+}
+
+function syncHearAboutOther() {
+  const showOther = selectedHearAbout() === "Other";
+  hearAboutOtherWrap.classList.toggle("hidden", !showOther);
+  if (!showOther) hearAboutOtherInput.value = "";
+}
+
 const today = todayISO();
 dobInput.max = today;
 startInput.min = today;
@@ -75,6 +96,7 @@ startInput.value = startInput.value || today;
 syncExpiry();
 startInput.addEventListener("change", syncExpiry);
 startInput.addEventListener("input", syncExpiry);
+syncHearAboutOther();
 
 function getUtm() {
   const params = new URLSearchParams(window.location.search);
@@ -98,8 +120,10 @@ function setError(name, message) {
     errorEl.classList.toggle("hidden", !message);
   }
   if (field) {
-    if (field.type === "checkbox") {
-      field.setAttribute("aria-invalid", message ? "true" : "false");
+    if (field.type === "checkbox" || field.type === "radio") {
+      form.querySelectorAll(`[name="${name}"]`).forEach((el) => {
+        el.setAttribute("aria-invalid", message ? "true" : "false");
+      });
     } else {
       field.classList.toggle("border-red-400", Boolean(message));
       field.setAttribute("aria-invalid", message ? "true" : "false");
@@ -130,6 +154,8 @@ function readForm() {
     startDate: (data.get("startDate") || "").toString(),
     expiryDate: addYearsISO((data.get("startDate") || "").toString(), 1),
     healthNotes: (data.get("healthNotes") || "").toString().trim(),
+    hearAbout: (data.get("hearAbout") || "").toString().trim(),
+    hearAboutOther: (data.get("hearAboutOther") || "").toString().trim(),
     signature: (data.get("signature") || "").toString().trim(),
     agreement: form.querySelector("#agreement").checked,
     cardAck: form.querySelector("#cardAck").checked,
@@ -162,6 +188,9 @@ function validate(values) {
     errors.startDate = "Choose a start date.";
   } else if (values.startDate < todayISO()) {
     errors.startDate = "Start date must be today or later.";
+  }
+  if (!HEAR_ABOUT_OPTIONS.includes(values.hearAbout)) {
+    errors.hearAbout = "Please tell us how you heard about us.";
   }
   if (!values.signature) {
     errors.signature = "Type your full name as your signature.";
@@ -211,6 +240,7 @@ function resetToForm() {
   startInput.value = todayISO();
   dobInput.max = todayISO();
   syncExpiry();
+  syncHearAboutOther();
   clearErrors();
   successPanel.classList.add("hidden");
   formPanel.classList.remove("hidden");
@@ -229,6 +259,8 @@ function buildPayload(values) {
     preferredDate: values.startDate,
     timeWindow: "Membership term",
     healthNotes: values.healthNotes,
+    hearAbout: values.hearAbout,
+    hearAboutOther: values.hearAbout === "Other" ? values.hearAboutOther : "",
     signature: values.signature,
     agreement: true,
     cardAck: true,
@@ -264,7 +296,7 @@ async function sendLead(payload) {
 
 form.addEventListener("blur", (event) => {
   const name = event.target && event.target.name;
-  if (!name || name === "company_website" || name === "healthNotes" || name === "expiryDate") return;
+  if (!name || name === "company_website" || name === "healthNotes" || name === "expiryDate" || name === "hearAboutOther") return;
   const values = readForm();
   const errors = validate(values);
   setError(name, errors[name] || "");
@@ -273,6 +305,7 @@ form.addEventListener("blur", (event) => {
 form.addEventListener("change", (event) => {
   const name = event.target && event.target.name;
   if (!name) return;
+  if (name === "hearAbout") syncHearAboutOther();
   const values = readForm();
   const errors = validate(values);
   if (!errors[name]) setError(name, "");
@@ -303,6 +336,7 @@ form.addEventListener("submit", async (event) => {
     form.reset();
     startInput.value = todayISO();
     syncExpiry();
+    syncHearAboutOther();
   } catch (err) {
     formError.textContent =
       "We couldn’t send your agreement. Please try again in a moment.";

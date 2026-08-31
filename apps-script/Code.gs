@@ -80,13 +80,29 @@ function doPost(e) {
     }
 
     var pkg = sanitize_(data.package, 80) || 'IV Treatment Membership';
+    var hearAbout = sanitize_(data.hearAbout, 40);
+    var hearAboutOther = sanitize_(data.hearAboutOther, 120);
+    var heardFrom = '';
+    if (hearAbout) {
+      heardFrom = 'Heard from: ' + hearAbout;
+      if (hearAbout === 'Other' && hearAboutOther) {
+        heardFrom += ' (' + hearAboutOther + ')';
+      }
+    }
+
     var notes = compact_([
       sanitize_(data.dob, 20) ? 'DOB: ' + sanitize_(data.dob, 20) : '',
       sanitize_(data.signature, 120) ? 'Signed: ' + sanitize_(data.signature, 120) : '',
       data.agreement ? 'Agreement: Yes' : '',
-      data.cardAck ? 'Card on file: Yes' : ''
+      data.cardAck ? 'Card on file: Yes' : '',
+      heardFrom
     ], ' | ');
-    var utmSource = compact_([sanitize_(data.utm_source, 120), sanitize_(data.utm_medium, 120)], ' / ');
+
+    var utmSourceRaw = sanitize_(data.utm_source, 120);
+    if (!utmSourceRaw && hearAbout) {
+      utmSourceRaw = hearAbout;
+    }
+    var utmSource = compact_([utmSourceRaw, sanitize_(data.utm_medium, 120)], ' / ');
 
     sheet.appendRow([
       id,
