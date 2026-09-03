@@ -3,7 +3,7 @@
  * Paste the Google Apps Script Web App URL below after you deploy the backend.
  */
 const WEBHOOK_URL =
-  "https://script.google.com/macros/s/AKfycbxh_7LqirydQHGSSxF4r3jcs5WKEDMHAT-3BiQIg5wmwCpsS9PjrCijozryZYpHOMtzeg/exec";
+  "https://script.google.com/macros/s/AKfycbzlr_r2ZWOO8O9P5BAzP7YLvTDZE1MF4deyRUIbMhFlmd-sE--yusEs_BlWLJtElmxZ/exec";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_AGE = 18;

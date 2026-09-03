@@ -3,7 +3,7 @@
  * Staff-only page — do not link from the public membership form.
  */
 const WEBHOOK_URL =
-  "https://script.google.com/macros/s/AKfycbxh_7LqirydQHGSSxF4r3jcs5WKEDMHAT-3BiQIg5wmwCpsS9PjrCijozryZYpHOMtzeg/exec";
+  "https://script.google.com/macros/s/AKfycbzlr_r2ZWOO8O9P5BAzP7YLvTDZE1MF4deyRUIbMhFlmd-sE--yusEs_BlWLJtElmxZ/exec";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDgV0ZN5h1MWzQWNwNqe-ZJmy2aBWL8diI",
