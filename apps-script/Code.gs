@@ -1,25 +1,41 @@
 /**
  * Smile Well IV membership — Google Apps Script backend
  *
- * AFTER PASTING: Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy
- * Keep the same Web app URL so the website does not need a new link.
- * Run setup() once after pasting so Total_Amount is added if the sheet is missing it.
+ * Desk auth verifies Firebase ID tokens by JWT claim checks only (aud / iss / exp /
+ * email). No UrlFetchApp — so script.external_request OAuth is NOT required for
+ * receptionist sign-in. Tradeoff: signature (RS256) is not checked here; a forged
+ * JWT could fake claims. Minting a real Firebase-signed token still needs Firebase
+ * credentials. True signature verify needs UrlFetchApp (certs) + editor Authorize
+ * + New version deploy, or an Admin SDK outside Apps Script.
+ *
+ * After pasting this Code.gs:
+ *  1. Deploy → Manage deployments → pencil → New version → Deploy
+ *     (same Web app URL; no authorize / Allow step needed for desk auth)
+ *  2. Refresh receptionist
+ *
+ * Spreadsheet access: Run setup() once from the editor if the sheet is new.
  *
  * Writes to the sheet tab whose header row is:
  * Submission_ID | Timestamp | Full_Name | Phone | Email | Selected_Package |
  * Preferred_Date (or I_Date) | Health_Notes | Lead_Status | UTM_Source | UTM_Campaign |
  * Internal_Notes | Total_Amount
  *
- * Desk POSTs (list, updateTotal) require a valid Firebase ID token.
+ * Desk POSTs (list, updateTotal) require a Firebase ID token in the JSON body as
+ * idToken. Do not rely on Authorization headers — GAS 302 redirects drop them.
  * Membership doPost (no action / signup) stays public.
  * Row lookup uses getDataRange(), which includes rows hidden via hideRows().
  */
 
 var LOCK_TIMEOUT_MS = 10000;
 var MAX_TEXT = 2000;
-var FIREBASE_WEB_API_KEY = 'AIzaSyDgV0ZN5h1MWzQWNwNqe-ZJmy2aBWL8diI';
-var FIREBASE_LOOKUP_URL =
-  'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_WEB_API_KEY;
+var FIREBASE_PROJECT_ID = 'smile-well-34579';
+var FIREBASE_ISSUER = 'https://securetoken.google.com/' + FIREBASE_PROJECT_ID;
+var TOKEN_SKEW_SEC = 60;
+// Only these accounts may read client records; a new receptionist needs an entry
+// here plus a Firebase user in smile-well-34579.
+var STAFF_EMAILS = [
+  'newlifewanted2020@gmail.com'
+];
 var HEADERS = [
   'Submission_ID',
   'Timestamp',
@@ -52,6 +68,16 @@ var HEADER_WIDTHS = {
   Internal_Notes: 280,
   Total_Amount: 130
 };
+
+/**
+ * Optional editor helper. Desk auth no longer uses UrlFetchApp — do not Run this
+ * expecting an "Allow" for script.external_request. After updating Code.gs, deploy
+ * a New version of the web app; that alone fixes receptionist sign-in.
+ * Run setup() if you need spreadsheet permission / headers.
+ */
+function authorize() {
+  SpreadsheetApp.getActiveSpreadsheet();
+}
 
 function setup() {
   var sheet = getSheet_();
@@ -94,7 +120,7 @@ function doGet(e) {
     return jsonResponse_({ ok: true, service: 'smile-well-iv-membership' });
   }
 
-  var denied = requireDeskAuth_(e, null);
+  var denied = safeRequireStaff_(e, null);
   if (denied) return denied;
 
   var lock = LockService.getScriptLock();
@@ -127,7 +153,7 @@ function doPost(e) {
   var action = requestAction_(e, data);
 
   if (action === 'list' || action === 'updateTotal') {
-    var denied = requireDeskAuth_(e, data);
+    var denied = safeRequireStaff_(e, data);
     if (denied) return denied;
   }
 
@@ -386,10 +412,34 @@ function parseBody_(e) {
   return parsed;
 }
 
-function requireDeskAuth_(e, data) {
+// A throw here would make Apps Script serve an HTML error page instead of JSON.
+function safeRequireStaff_(e, data) {
+  try {
+    return requireStaff_(e, data);
+  } catch (err) {
+    return jsonResponse_({
+      ok: false,
+      error: 'Could not verify sign-in',
+      detail: String((err && err.message) || err)
+    });
+  }
+}
+
+function requireStaff_(e, data) {
   var token = readIdToken_(e, data);
-  if (!firebaseIdTokenEmail_(token)) {
-    return jsonResponse_({ ok: false, error: 'Sign in required' });
+  if (!token) {
+    return jsonUnauthorized_('Sign in required', 'missing token');
+  }
+  var verified = verifyFirebaseIdToken_(token);
+  if (!verified.ok) {
+    if (verified.error === 'Sign in required') {
+      return jsonUnauthorized_(verified.error, verified.detail);
+    }
+    return jsonResponse_({
+      ok: false,
+      error: verified.error || 'Could not verify sign-in',
+      detail: verified.detail || ''
+    });
   }
   return null;
 }
@@ -398,6 +448,9 @@ function readIdToken_(e, data) {
   if (data && data.idToken != null && String(data.idToken).trim()) {
     return String(data.idToken).trim();
   }
+
+  var fromRaw = idTokenFromRawBody_(e);
+  if (fromRaw) return fromRaw;
 
   var header = headerValue_(e, 'Authorization') || headerValue_(e, 'authorization');
   if (header) return bearerToken_(header);
@@ -408,6 +461,17 @@ function readIdToken_(e, data) {
   }
   if (param.Authorization) return bearerToken_(param.Authorization);
   if (param.authorization) return bearerToken_(param.authorization);
+  return '';
+}
+
+function idTokenFromRawBody_(e) {
+  try {
+    if (!e || !e.postData || !e.postData.contents) return '';
+    var parsed = JSON.parse(String(e.postData.contents).replace(/^\uFEFF/, '').trim());
+    if (parsed && parsed.idToken != null && String(parsed.idToken).trim()) {
+      return String(parsed.idToken).trim();
+    }
+  } catch (err) {}
   return '';
 }
 
@@ -424,23 +488,85 @@ function bearerToken_(value) {
   return match ? match[1] : text;
 }
 
-function firebaseIdTokenEmail_(token) {
-  if (!token) return '';
-  try {
-    var response = UrlFetchApp.fetch(FIREBASE_LOOKUP_URL, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify({ idToken: token }),
-      muteHttpExceptions: true
-    });
-    if (response.getResponseCode() !== 200) return '';
-    var body = JSON.parse(response.getContentText() || '{}');
-    if (!body || !body.users || !body.users.length) return '';
-    var email = body.users[0] && body.users[0].email;
-    return email ? String(email).trim() : '';
-  } catch (err) {
-    return '';
+/**
+ * Claim-only Firebase ID token check (no UrlFetchApp / RS256).
+ * Validates aud, iss, exp, and that the email is on STAFF_EMAILS.
+ */
+function verifyFirebaseIdToken_(token) {
+  if (!token) {
+    return staffAuthFail_('Sign in required', 'missing token');
   }
+
+  var parts = String(token).split('.');
+  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) {
+    return staffAuthFail_('Could not verify sign-in', 'malformed token');
+  }
+
+  var payload;
+  try {
+    payload = JSON.parse(bytesToUtf8_(base64UrlToBytes_(parts[1])));
+  } catch (decodeErr) {
+    return staffAuthFail_('Could not verify sign-in', 'token decode failed');
+  }
+  if (!payload || typeof payload !== 'object') {
+    return staffAuthFail_('Could not verify sign-in', 'invalid token payload');
+  }
+
+  if (String(payload.aud || '') !== FIREBASE_PROJECT_ID) {
+    return staffAuthFail_('Wrong Firebase project', 'bad audience');
+  }
+  if (String(payload.iss || '') !== FIREBASE_ISSUER) {
+    return staffAuthFail_('Could not verify sign-in', 'bad issuer');
+  }
+
+  var now = Math.floor(Date.now() / 1000);
+  var exp = Number(payload.exp);
+  if (!isFinite(exp) || now >= exp + TOKEN_SKEW_SEC) {
+    return staffAuthFail_('Sign-in expired', 'token expired');
+  }
+
+  var email = payload.email != null ? String(payload.email).trim() : '';
+  if (!email) {
+    return staffAuthFail_('Sign in required', 'email missing');
+  }
+  if (!isStaffEmail_(email)) {
+    return staffAuthFail_('Not authorized', 'email not on staff list');
+  }
+
+  return { ok: true, email: email };
+}
+
+function isStaffEmail_(email) {
+  if (!STAFF_EMAILS.length) return true;
+  var needle = String(email || '').trim().toLowerCase();
+  for (var i = 0; i < STAFF_EMAILS.length; i++) {
+    if (String(STAFF_EMAILS[i] || '').trim().toLowerCase() === needle) return true;
+  }
+  return false;
+}
+
+function staffAuthFail_(error, detail) {
+  return { ok: false, error: error, detail: detail || '' };
+}
+
+function base64UrlToBytes_(value) {
+  var b64 = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  return copyBytes_(Utilities.base64Decode(b64));
+}
+
+function bytesToUtf8_(bytes) {
+  return Utilities.newBlob(bytes).getDataAsString('UTF-8');
+}
+
+// Utilities.newBlob wants signed bytes (-128..127), not 0..255.
+function copyBytes_(raw) {
+  var out = [];
+  for (var i = 0; i < raw.length; i++) {
+    var b = raw[i] & 0xff;
+    out.push(b > 127 ? b - 256 : b);
+  }
+  return out;
 }
 
 function requestAction_(e, data) {
@@ -552,6 +678,16 @@ function pad_(num, width) {
   var s = String(num);
   while (s.length < width) s = '0' + s;
   return s;
+}
+
+function jsonUnauthorized_(message, detail) {
+  var body = {
+    ok: false,
+    error: message || 'Sign in required',
+    status: 401
+  };
+  if (detail) body.detail = detail;
+  return jsonResponse_(body);
 }
 
 function jsonResponse_(obj) {

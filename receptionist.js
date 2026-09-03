@@ -15,6 +15,15 @@ const firebaseConfig = {
   measurementId: "G-B67NQ5PX1M",
 };
 
+if (typeof firebase === "undefined" || !firebase.initializeApp || !firebase.auth) {
+  const loadingEl = document.getElementById("auth-loading");
+  if (loadingEl) {
+    loadingEl.innerHTML =
+      '<p class="text-sm text-red-700">Could not load sign-in. Refresh the page.</p>';
+  }
+  throw new Error("Firebase Auth SDK missing");
+}
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
@@ -346,20 +355,64 @@ const MEMBERSHIP_VALIDATE_ERRORS = new Set([
   "Consent required",
 ]);
 const LIST_UNAVAILABLE =
-  "List is not available yet. Deploy the updated Apps Script.";
+  "List is not available yet. Paste updated Code.gs, then Deploy → New version.";
 const SAVE_UNAVAILABLE =
-  "Save is not available yet. Deploy the updated Apps Script.";
+  "Save is not available yet. Paste updated Code.gs, then Deploy → New version.";
+const REDEPLOY_HINT =
+  "Desk API needs a New version deploy. Paste the latest Code.gs, then Deploy → Manage deployments → New version (same URL). No authorize/Allow step.";
+// Google serves an HTML error page (not JSON) when the script itself fails to run.
+const SCRIPT_ERROR_PAGE =
+  "Apps Script returned an error page instead of data — paste the latest Code.gs into the editor (replacing all contents), then Deploy → Manage deployments → New version.";
 
-function listErrorMessage(data) {
+function isAuthDenied(response, data) {
+  if (response && response.status === 401) return true;
+  const code = data && data.status != null ? Number(data.status) : 0;
+  if (code === 401) return true;
   const error = data && data.error ? String(data.error) : "";
-  if (!error || MEMBERSHIP_VALIDATE_ERRORS.has(error)) return LIST_UNAVAILABLE;
-  return error;
+  return (
+    /^sign in required$/i.test(error) ||
+    /^unauthorized$/i.test(error) ||
+    /^sign-in expired$/i.test(error)
+  );
 }
 
-function saveErrorMessage(data) {
+function needsRedeployHint(data) {
+  const detail = data && data.detail ? String(data.detail) : "";
   const error = data && data.error ? String(data.error) : "";
-  if (!error || MEMBERSHIP_VALIDATE_ERRORS.has(error)) return SAVE_UNAVAILABLE;
-  return error;
+  const blob = `${error} ${detail}`;
+  return (
+    /certs fetch failed/i.test(blob) ||
+    /script\.external_request/i.test(blob) ||
+    /UrlFetchApp/i.test(blob) ||
+    /public keys unavailable/i.test(blob)
+  );
+}
+
+function formatApiError(data) {
+  const error = data && data.error ? String(data.error).trim() : "";
+  const detail = data && data.detail ? String(data.detail).trim() : "";
+  if (!error || MEMBERSHIP_VALIDATE_ERRORS.has(error)) return "";
+  if (needsRedeployHint(data)) return REDEPLOY_HINT;
+  return detail ? `${error} — ${detail}` : error;
+}
+
+function listErrorMessage(response, data) {
+  const formatted = formatApiError(data);
+  if (formatted) return formatted;
+  if (isAuthDenied(response, data)) return "Sign in required";
+  if (!data && response && response.status >= 400) return SCRIPT_ERROR_PAGE;
+  if (response && response.status >= 400) {
+    return `Could not load members (${response.status}).`;
+  }
+  return LIST_UNAVAILABLE;
+}
+
+function saveErrorMessage(response, data) {
+  const formatted = formatApiError(data);
+  if (formatted) return formatted;
+  if (isAuthDenied(response, data)) return "Sign in required";
+  if (!data && response && response.status >= 400) return SCRIPT_ERROR_PAGE;
+  return SAVE_UNAVAILABLE;
 }
 
 function isClientList(data) {
@@ -370,63 +423,47 @@ function isTotalSaved(data) {
   return Boolean(data && data.ok === true && !data.service && !Array.isArray(data.clients));
 }
 
-async function getIdToken() {
-  const user = auth.currentUser;
+async function getIdToken(user, forceRefresh) {
   if (!user) return "";
-  return user.getIdToken();
+  try {
+    return await user.getIdToken(Boolean(forceRefresh));
+  } catch (err) {
+    if (!forceRefresh) {
+      try {
+        return await user.getIdToken(true);
+      } catch (refreshErr) {
+        return "";
+      }
+    }
+    return "";
+  }
 }
 
 function deskHeaders() {
   return { "Content-Type": "text/plain;charset=utf-8" };
 }
 
-async function fetchClientList() {
-  const idToken = await getIdToken();
-  if (!idToken) {
-    throw new Error("Sign in required");
-  }
-
-  const listUrl = `${WEBHOOK_URL}?action=list`;
-  const payload = { action: "list", idToken };
-  let postData = null;
-  try {
-    const postResponse = await fetch(listUrl, {
-      method: "POST",
-      redirect: "follow",
-      headers: deskHeaders(),
-      body: JSON.stringify(payload),
-    });
-    postData = await parseJsonResponse(postResponse);
-    if (isClientList(postData)) {
-      return postData;
-    }
-  } catch (err) {
-    postData = null;
-  }
-
-  const getUrl = `${WEBHOOK_URL}?action=list&idToken=${encodeURIComponent(idToken)}`;
-  const getResponse = await fetch(getUrl, {
-    method: "GET",
+async function deskPost(action, extra, idToken) {
+  const payload = Object.assign({ action, idToken }, extra || {});
+  const response = await fetch(`${WEBHOOK_URL}?action=${encodeURIComponent(action)}`, {
+    method: "POST",
     redirect: "follow",
+    headers: deskHeaders(),
+    body: JSON.stringify(payload),
   });
-  const getData = await parseJsonResponse(getResponse);
-  if (isClientList(getData)) {
-    return getData;
-  }
-  if (postData && postData.error) {
-    throw new Error(listErrorMessage(postData));
-  }
-  if (getData && getData.error) {
-    throw new Error(listErrorMessage(getData));
-  }
-  if (getData && getData.ok === true) {
-    throw new Error(LIST_UNAVAILABLE);
-  }
-  throw new Error("Could not load members.");
+  const data = await parseJsonResponse(response);
+  return { response, data };
 }
 
-async function loadClients() {
-  if (!signedIn || loading) return;
+async function fetchClientList(idToken) {
+  return deskPost("list", null, idToken);
+}
+
+async function loadMembers(options) {
+  const opts = options || {};
+  const user = opts.user || auth.currentUser;
+  if (!user || loading) return;
+
   loading = true;
   lastError = "";
   refreshBtn.disabled = true;
@@ -436,9 +473,22 @@ async function loadClients() {
     if (!WEBHOOK_URL) {
       throw new Error("Webhook URL is missing.");
     }
-    const data = await fetchClientList();
+
+    let idToken = await getIdToken(user, Boolean(opts.forceRefresh));
+    if (!idToken) {
+      throw new Error("Sign in required");
+    }
+
+    let { response, data } = await fetchClientList(idToken);
+    if (!isClientList(data) && isAuthDenied(response, data) && !opts.forceRefresh) {
+      const fresh = await getIdToken(user, true);
+      if (fresh) {
+        ({ response, data } = await fetchClientList(fresh));
+      }
+    }
+
     if (!isClientList(data)) {
-      throw new Error(listErrorMessage(data));
+      throw new Error(listErrorMessage(response, data));
     }
     clients = data.clients;
     if (selectedId && !clients.some((client) => client.id === selectedId)) {
@@ -485,24 +535,34 @@ async function saveTotal() {
   }
 
   try {
-    const idToken = await getIdToken();
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error("Sign in required");
+    }
+    let idToken = await getIdToken(user, false);
+    if (!idToken) {
+      idToken = await getIdToken(user, true);
+    }
     if (!idToken) {
       throw new Error("Sign in required");
     }
-    const response = await fetch(`${WEBHOOK_URL}?action=updateTotal`, {
-      method: "POST",
-      redirect: "follow",
-      headers: deskHeaders(),
-      body: JSON.stringify({
-        action: "updateTotal",
-        id: client.id,
-        totalAmount: parsed,
-        idToken,
-      }),
-    });
-    const data = await parseJsonResponse(response);
+    let { response, data } = await deskPost(
+      "updateTotal",
+      { id: client.id, totalAmount: parsed },
+      idToken
+    );
+    if (!isTotalSaved(data) && isAuthDenied(response, data)) {
+      const fresh = await getIdToken(user, true);
+      if (fresh) {
+        ({ response, data } = await deskPost(
+          "updateTotal",
+          { id: client.id, totalAmount: parsed },
+          fresh
+        ));
+      }
+    }
     if (!isTotalSaved(data)) {
-      throw new Error(saveErrorMessage(data));
+      throw new Error(saveErrorMessage(response, data));
     }
     client.totalAmount = parsed;
     input.value = "";
@@ -528,7 +588,7 @@ async function saveTotal() {
 listEl.addEventListener("click", (event) => {
   const retry = event.target.closest("[data-action='retry']");
   if (retry) {
-    loadClients();
+    loadMembers({ forceRefresh: true });
     return;
   }
   const button = event.target.closest("[data-id]");
@@ -560,7 +620,7 @@ searchInput.addEventListener("input", () => {
 });
 
 refreshBtn.addEventListener("click", () => {
-  loadClients();
+  loadMembers({ forceRefresh: true });
 });
 
 window.addEventListener("resize", () => {
@@ -595,9 +655,10 @@ if (signOutBtn) {
 
 auth.onAuthStateChanged((user) => {
   if (!user) {
+    signedIn = false;
     goToLogin();
     return;
   }
   showDesk(user);
-  loadClients();
+  loadMembers({ user });
 });
