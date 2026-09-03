@@ -5,6 +5,23 @@
 const WEBHOOK_URL =
   "https://script.google.com/macros/s/AKfycbxh_7LqirydQHGSSxF4r3jcs5WKEDMHAT-3BiQIg5wmwCpsS9PjrCijozryZYpHOMtzeg/exec";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDgV0ZN5h1MWzQWNwNqe-ZJmy2aBWL8diI",
+  authDomain: "smile-well-34579.firebaseapp.com",
+  projectId: "smile-well-34579",
+  storageBucket: "smile-well-34579.firebasestorage.app",
+  messagingSenderId: "462381026785",
+  appId: "1:462381026785:web:7e35027eb715c5199616a0",
+  measurementId: "G-B67NQ5PX1M",
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const authLoading = document.getElementById("auth-loading");
+const deskApp = document.getElementById("desk-app");
+const signedInEmail = document.getElementById("signed-in-email");
+const signOutBtn = document.getElementById("sign-out-btn");
 const searchInput = document.getElementById("client-search");
 const listEl = document.getElementById("client-list");
 const listMeta = document.getElementById("list-meta");
@@ -18,6 +35,7 @@ let selectedId = "";
 let loading = false;
 let saving = false;
 let lastError = "";
+let signedIn = false;
 
 function digitsOnly(value) {
   return String(value || "").replace(/\D/g, "");
@@ -352,9 +370,42 @@ function isTotalSaved(data) {
   return Boolean(data && data.ok === true && !data.service && !Array.isArray(data.clients));
 }
 
+async function getIdToken() {
+  const user = auth.currentUser;
+  if (!user) return "";
+  return user.getIdToken();
+}
+
+function deskHeaders() {
+  return { "Content-Type": "text/plain;charset=utf-8" };
+}
+
 async function fetchClientList() {
+  const idToken = await getIdToken();
+  if (!idToken) {
+    throw new Error("Sign in required");
+  }
+
   const listUrl = `${WEBHOOK_URL}?action=list`;
-  const getResponse = await fetch(listUrl, {
+  const payload = { action: "list", idToken };
+  let postData = null;
+  try {
+    const postResponse = await fetch(listUrl, {
+      method: "POST",
+      redirect: "follow",
+      headers: deskHeaders(),
+      body: JSON.stringify(payload),
+    });
+    postData = await parseJsonResponse(postResponse);
+    if (isClientList(postData)) {
+      return postData;
+    }
+  } catch (err) {
+    postData = null;
+  }
+
+  const getUrl = `${WEBHOOK_URL}?action=list&idToken=${encodeURIComponent(idToken)}`;
+  const getResponse = await fetch(getUrl, {
     method: "GET",
     redirect: "follow",
   });
@@ -362,19 +413,11 @@ async function fetchClientList() {
   if (isClientList(getData)) {
     return getData;
   }
-
-  const postResponse = await fetch(listUrl, {
-    method: "POST",
-    redirect: "follow",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ action: "list" }),
-  });
-  const postData = await parseJsonResponse(postResponse);
-  if (isClientList(postData)) {
-    return postData;
-  }
   if (postData && postData.error) {
     throw new Error(listErrorMessage(postData));
+  }
+  if (getData && getData.error) {
+    throw new Error(listErrorMessage(getData));
   }
   if (getData && getData.ok === true) {
     throw new Error(LIST_UNAVAILABLE);
@@ -383,7 +426,7 @@ async function fetchClientList() {
 }
 
 async function loadClients() {
-  if (loading) return;
+  if (!signedIn || loading) return;
   loading = true;
   lastError = "";
   refreshBtn.disabled = true;
@@ -442,14 +485,19 @@ async function saveTotal() {
   }
 
   try {
+    const idToken = await getIdToken();
+    if (!idToken) {
+      throw new Error("Sign in required");
+    }
     const response = await fetch(`${WEBHOOK_URL}?action=updateTotal`, {
       method: "POST",
       redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      headers: deskHeaders(),
       body: JSON.stringify({
         action: "updateTotal",
         id: client.id,
         totalAmount: parsed,
+        idToken,
       }),
     });
     const data = await parseJsonResponse(response);
@@ -519,5 +567,37 @@ window.addEventListener("resize", () => {
   showList();
 });
 
-render();
-loadClients();
+function goToLogin() {
+  location.replace("login.html");
+}
+
+function showDesk(user) {
+  signedIn = true;
+  if (authLoading) authLoading.classList.add("hidden");
+  if (deskApp) deskApp.classList.add("is-ready");
+  if (signedInEmail) {
+    signedInEmail.textContent = user.email || "";
+    signedInEmail.classList.toggle("hidden", !user.email);
+  }
+}
+
+if (signOutBtn) {
+  signOutBtn.addEventListener("click", async () => {
+    try {
+      await auth.signOut();
+      goToLogin();
+    } catch (err) {
+      lastError = "Could not sign out. Try again.";
+      render();
+    }
+  });
+}
+
+auth.onAuthStateChanged((user) => {
+  if (!user) {
+    goToLogin();
+    return;
+  }
+  showDesk(user);
+  loadClients();
+});

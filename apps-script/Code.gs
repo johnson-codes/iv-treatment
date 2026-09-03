@@ -10,12 +10,16 @@
  * Preferred_Date (or I_Date) | Health_Notes | Lead_Status | UTM_Source | UTM_Campaign |
  * Internal_Notes | Total_Amount
  *
- * Desk POSTs (list, updateTotal) are handled before membership validate_().
+ * Desk POSTs (list, updateTotal) require a valid Firebase ID token.
+ * Membership doPost (no action / signup) stays public.
  * Row lookup uses getDataRange(), which includes rows hidden via hideRows().
  */
 
 var LOCK_TIMEOUT_MS = 10000;
 var MAX_TEXT = 2000;
+var FIREBASE_WEB_API_KEY = 'AIzaSyDgV0ZN5h1MWzQWNwNqe-ZJmy2aBWL8diI';
+var FIREBASE_LOOKUP_URL =
+  'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + FIREBASE_WEB_API_KEY;
 var HEADERS = [
   'Submission_ID',
   'Timestamp',
@@ -90,6 +94,9 @@ function doGet(e) {
     return jsonResponse_({ ok: true, service: 'smile-well-iv-membership' });
   }
 
+  var denied = requireDeskAuth_(e, null);
+  if (denied) return denied;
+
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
@@ -106,24 +113,29 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var data = {};
+  var hasBody = Boolean(e && e.postData && e.postData.contents);
+  var parseFailed = false;
+  if (hasBody) {
+    try {
+      data = parseBody_(e) || {};
+    } catch (parseErr) {
+      parseFailed = true;
+      data = {};
+    }
+  }
+  var action = requestAction_(e, data);
+
+  if (action === 'list' || action === 'updateTotal') {
+    var denied = requireDeskAuth_(e, data);
+    if (denied) return denied;
+  }
+
   var lock = LockService.getScriptLock();
   try {
     if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
       return jsonResponse_({ ok: false, error: 'Busy, please try again.' });
     }
-
-    var data = {};
-    var hasBody = Boolean(e && e.postData && e.postData.contents);
-    var parseFailed = false;
-    if (hasBody) {
-      try {
-        data = parseBody_(e) || {};
-      } catch (parseErr) {
-        parseFailed = true;
-        data = {};
-      }
-    }
-    var action = requestAction_(e, data);
 
     // Desk actions first — never fall through to membership validate_().
     if (action === 'list') {
@@ -372,6 +384,63 @@ function parseBody_(e) {
     throw new Error('Invalid JSON');
   }
   return parsed;
+}
+
+function requireDeskAuth_(e, data) {
+  var token = readIdToken_(e, data);
+  if (!firebaseIdTokenEmail_(token)) {
+    return jsonResponse_({ ok: false, error: 'Sign in required' });
+  }
+  return null;
+}
+
+function readIdToken_(e, data) {
+  if (data && data.idToken != null && String(data.idToken).trim()) {
+    return String(data.idToken).trim();
+  }
+
+  var header = headerValue_(e, 'Authorization') || headerValue_(e, 'authorization');
+  if (header) return bearerToken_(header);
+
+  var param = (e && e.parameter) || {};
+  if (param.idToken != null && String(param.idToken).trim()) {
+    return String(param.idToken).trim();
+  }
+  if (param.Authorization) return bearerToken_(param.Authorization);
+  if (param.authorization) return bearerToken_(param.authorization);
+  return '';
+}
+
+function headerValue_(e, name) {
+  if (!e) return '';
+  if (e.headers && e.headers[name] != null) return String(e.headers[name]);
+  if (e.header && e.header[name] != null) return String(e.header[name]);
+  return '';
+}
+
+function bearerToken_(value) {
+  var text = String(value || '').trim();
+  var match = text.match(/^Bearer\s+(\S+)/i);
+  return match ? match[1] : text;
+}
+
+function firebaseIdTokenEmail_(token) {
+  if (!token) return '';
+  try {
+    var response = UrlFetchApp.fetch(FIREBASE_LOOKUP_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ idToken: token }),
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() !== 200) return '';
+    var body = JSON.parse(response.getContentText() || '{}');
+    if (!body || !body.users || !body.users.length) return '';
+    var email = body.users[0] && body.users[0].email;
+    return email ? String(email).trim() : '';
+  } catch (err) {
+    return '';
+  }
 }
 
 function requestAction_(e, data) {

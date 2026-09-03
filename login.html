@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="Smile Well Medical & Spa — staff sign-in for the reception desk."
+    />
+    <title>Sign in · Smile Well Medical &amp; Spa</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              navy: { DEFAULT: "#1d3557", dark: "#13233b", soft: "#e8eef6" },
+              gold: "#f6e27a",
+              cream: "#f6f4ef",
+              mist: "#e4e0d8",
+              ink: "#1c2430",
+            },
+            fontFamily: {
+              serif: ["Source Serif 4", "Georgia", "serif"],
+              sans: ["DM Sans", "system-ui", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      #login-app:not(.is-ready) {
+        display: none !important;
+      }
+      .lift {
+        box-shadow:
+          0 1px 2px rgb(29 53 87 / 0.06),
+          0 12px 28px rgb(29 53 87 / 0.1),
+          0 28px 48px rgb(29 53 87 / 0.06);
+      }
+      input,
+      button,
+      label {
+        touch-action: manipulation;
+      }
+      input:not([type="hidden"]) {
+        font-size: 1rem;
+      }
+    </style>
+  </head>
+  <body class="bg-cream text-ink font-sans antialiased min-h-dvh">
+    <div
+      id="auth-loading"
+      class="min-h-dvh flex items-center justify-center px-4"
+      role="status"
+    >
+      <p class="text-sm text-navy">Checking sign-in…</p>
+    </div>
+
+    <div id="login-app" class="min-h-dvh flex flex-col">
+      <header class="border-b border-navy/10 bg-white">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3 min-w-0">
+          <img
+            src="logo.svg"
+            alt="Smile Well Medical &amp; Spa"
+            width="180"
+            height="36"
+            class="h-7 sm:h-8 w-auto"
+          />
+          <span class="hidden sm:inline text-navy/30">|</span>
+          <p class="text-navy text-xs font-medium tracking-[0.16em] uppercase truncate">
+            Staff sign-in
+          </p>
+        </div>
+      </header>
+      <main class="flex-1 flex items-center justify-center px-4 py-10">
+        <form
+          id="login-form"
+          class="lift w-full max-w-md rounded-3xl border border-navy/15 bg-white p-6 sm:p-8"
+        >
+          <p class="text-navy text-xs font-medium tracking-[0.16em] uppercase mb-2">Staff access</p>
+          <h1 class="font-serif text-3xl text-navy mb-2">Sign in</h1>
+          <p class="text-sm text-ink/55 mb-6">
+            Use your Smile Well receptionist account to open the desk.
+          </p>
+          <label for="login-email" class="block text-sm mb-2">Email</label>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            autocomplete="username"
+            required
+            class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 mb-4"
+          />
+          <label for="login-password" class="block text-sm mb-2">Password</label>
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 py-3 text-base min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15 mb-4"
+          />
+          <p id="login-error" class="hidden mb-4 text-sm text-red-700" role="alert"></p>
+          <button
+            id="login-submit"
+            type="submit"
+            class="w-full min-h-12 px-5 rounded-full bg-navy text-white text-sm font-medium hover:bg-navy-dark disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            Sign in
+          </button>
+        </form>
+      </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="login.js"></script>
+  </body>
+</html>
