@@ -3,10 +3,15 @@
  *
  * AFTER PASTING: Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy
  * Keep the same Web app URL so the website does not need a new link.
+ * Run setup() once after pasting so Total_Amount is added if the sheet is missing it.
  *
  * Writes to the sheet tab whose header row is:
  * Submission_ID | Timestamp | Full_Name | Phone | Email | Selected_Package |
- * Preferred_Date | Health_Notes | Lead_Status | UTM_Source | UTM_Campaign | Internal_Notes
+ * Preferred_Date (or I_Date) | Health_Notes | Lead_Status | UTM_Source | UTM_Campaign |
+ * Internal_Notes | Total_Amount
+ *
+ * Desk POSTs (list, updateTotal) are handled before membership validate_().
+ * Row lookup uses getDataRange(), which includes rows hidden via hideRows().
  */
 
 var LOCK_TIMEOUT_MS = 10000;
@@ -23,32 +28,81 @@ var HEADERS = [
   'Lead_Status',
   'UTM_Source',
   'UTM_Campaign',
-  'Internal_Notes'
+  'Internal_Notes',
+  'Total_Amount'
 ];
+
+var HEADER_WIDTHS = {
+  Submission_ID: 140,
+  Timestamp: 170,
+  Full_Name: 180,
+  Phone: 150,
+  Email: 220,
+  Selected_Package: 200,
+  Preferred_Date: 200,
+  I_Date: 200,
+  Health_Notes: 260,
+  Lead_Status: 120,
+  UTM_Source: 140,
+  UTM_Campaign: 160,
+  Internal_Notes: 280,
+  Total_Amount: 130
+};
 
 function setup() {
   var sheet = getSheet_();
-  sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
-  sheet.getRange(1, 1, 1, HEADERS.length)
+  ensureHeaders_(sheet);
+
+  var lastCol = Math.max(sheet.getLastColumn(), HEADERS.length);
+  sheet.getRange(1, 1, 1, lastCol)
     .setFontWeight('bold')
     .setBackground('#1d3557')
     .setFontColor('#ffffff');
   sheet.setFrozenRows(1);
 
-  var widths = [140, 170, 180, 150, 220, 200, 200, 260, 120, 140, 160, 280];
-  for (var i = 0; i < widths.length; i++) {
-    sheet.setColumnWidth(i + 1, widths[i]);
+  var headers = headerNames_(sheet);
+  for (var i = 0; i < headers.length; i++) {
+    var width = HEADER_WIDTHS[headers[i]];
+    if (width) sheet.setColumnWidth(i + 1, width);
   }
 
-  var statusRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['New', 'Contacted', 'Active', 'Expired', 'Closed'], true)
-    .setAllowInvalid(false)
-    .build();
-  sheet.getRange('I2:I').setDataValidation(statusRule);
+  var statusCol = headerIndex_(sheet, 'Lead_Status') + 1;
+  if (statusCol > 0) {
+    var statusRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['New', 'Contacted', 'Active', 'Expired', 'Closed'], true)
+      .setAllowInvalid(false)
+      .build();
+    sheet.getRange(2, statusCol, sheet.getMaxRows() - 1, 1).setDataValidation(statusRule);
+  }
+
+  var totalCol = headerIndex_(sheet, 'Total_Amount') + 1;
+  if (totalCol > 0) {
+    sheet.getRange(2, totalCol, sheet.getMaxRows() - 1, 1).setNumberFormat('$#,##0.00');
+  }
 }
 
-function doGet() {
-  return jsonResponse_({ ok: true, service: 'smile-well-iv-membership' });
+function doGet(e) {
+  var action = requestAction_(e, null);
+  if (action === 'updateTotal') {
+    return jsonResponse_({ ok: false, error: 'POST required' });
+  }
+  if (action !== 'list') {
+    return jsonResponse_({ ok: true, service: 'smile-well-iv-membership' });
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
+      return jsonResponse_({ ok: false, error: 'Busy, please try again.' });
+    }
+    return jsonResponse_({ ok: true, clients: listClients_() });
+  } catch (err) {
+    return jsonResponse_({ ok: false, error: 'Server error' });
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (releaseErr) {}
+  }
 }
 
 function doPost(e) {
@@ -58,7 +112,31 @@ function doPost(e) {
       return jsonResponse_({ ok: false, error: 'Busy, please try again.' });
     }
 
-    var data = parseBody_(e);
+    var data = {};
+    var hasBody = Boolean(e && e.postData && e.postData.contents);
+    var parseFailed = false;
+    if (hasBody) {
+      try {
+        data = parseBody_(e) || {};
+      } catch (parseErr) {
+        parseFailed = true;
+        data = {};
+      }
+    }
+    var action = requestAction_(e, data);
+
+    // Desk actions first — never fall through to membership validate_().
+    if (action === 'list') {
+      return jsonResponse_({ ok: true, clients: listClients_() });
+    }
+    if (action === 'updateTotal') {
+      return updateTotal_(data, e);
+    }
+
+    if (parseFailed || !hasBody) {
+      return jsonResponse_({ ok: false, error: 'Server error' });
+    }
+
     if (isSpam_(data)) {
       return jsonResponse_({ ok: true, id: 'IV-OK' });
     }
@@ -116,7 +194,8 @@ function doPost(e) {
       'New',
       utmSource,
       sanitize_(data.utm_campaign, 120),
-      notes
+      notes,
+      ''
     ]);
 
     return jsonResponse_({ ok: true, id: id, expiryDate: expiryDate });
@@ -127,6 +206,74 @@ function doPost(e) {
       lock.releaseLock();
     } catch (releaseErr) {}
   }
+}
+
+function listClients_() {
+  var sheet = getSheet_();
+  // getDataRange() includes rows hidden via hideRows(); do not skip them.
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  var idx = headerMap_(values[0]);
+  var termCol = firstCol_(idx, ['Preferred_Date', 'I_Date']);
+  var totalCol = firstCol_(idx, ['Total_Amount']);
+
+  var clients = [];
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r];
+    var id = String(cellString_(row, idx.Submission_ID) || '').trim();
+    if (!id) continue;
+    clients.push({
+      id: id,
+      timestamp: formatCell_(idx.Timestamp != null ? row[idx.Timestamp] : ''),
+      fullName: cellString_(row, idx.Full_Name),
+      phone: cellString_(row, idx.Phone),
+      email: cellString_(row, idx.Email),
+      package: cellString_(row, idx.Selected_Package),
+      term: cellString_(row, termCol),
+      healthNotes: cellString_(row, idx.Health_Notes),
+      leadStatus: cellString_(row, idx.Lead_Status),
+      utmSource: cellString_(row, idx.UTM_Source),
+      utmCampaign: cellString_(row, idx.UTM_Campaign),
+      internalNotes: cellString_(row, idx.Internal_Notes),
+      totalAmount: formatAmountCell_(totalCol != null ? row[totalCol] : '')
+    });
+  }
+  clients.reverse();
+  return clients;
+}
+
+function updateTotal_(data, e) {
+  data = data || {};
+  var param = (e && e.parameter) || {};
+  var idRaw = data.id != null && String(data.id) !== '' ? data.id : param.id;
+  var amountRaw = data.totalAmount != null && String(data.totalAmount) !== ''
+    ? data.totalAmount
+    : param.totalAmount;
+
+  var id = sanitize_(idRaw, 40);
+  if (!/^IV-[A-Za-z0-9-]{1,32}$/.test(id)) {
+    return jsonResponse_({ ok: false, error: 'Invalid id' });
+  }
+
+  var amount = sanitizeAmount_(amountRaw);
+  if (amount === null) {
+    return jsonResponse_({ ok: false, error: 'Invalid amount' });
+  }
+
+  var sheet = getSheet_();
+  var col = headerIndex_(sheet, 'Total_Amount') + 1;
+  if (col < 1) {
+    return jsonResponse_({ ok: false, error: 'Total_Amount column missing. Run setup().' });
+  }
+
+  var row = findRowById_(sheet, id);
+  if (row < 0) {
+    return jsonResponse_({ ok: false, error: 'Member not found' });
+  }
+
+  sheet.getRange(row, col).setValue(amount === '' ? '' : Number(amount));
+  return jsonResponse_({ ok: true, id: id });
 }
 
 function getSheet_() {
@@ -140,15 +287,115 @@ function getSheet_() {
   return ss.getActiveSheet();
 }
 
+function ensureHeaders_(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h || '').trim();
+  });
+
+  var nextCol = 1;
+  for (var i = 0; i < existing.length; i++) {
+    if (existing[i]) nextCol = i + 2;
+  }
+
+  if (nextCol === 1 && !existing[0]) {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    return;
+  }
+
+  for (var j = 0; j < HEADERS.length; j++) {
+    if (!headerPresent_(existing, HEADERS[j])) {
+      sheet.getRange(1, nextCol).setValue(HEADERS[j]);
+      existing.push(HEADERS[j]);
+      nextCol++;
+    }
+  }
+}
+
+function headerNames_(sheet) {
+  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  return sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h || '').trim();
+  });
+}
+
+function headerMap_(headers) {
+  var idx = {};
+  for (var c = 0; c < headers.length; c++) {
+    var name = String(headers[c] || '').trim();
+    if (name && idx[name] == null) idx[name] = c;
+  }
+  return idx;
+}
+
+function firstCol_(idx, names) {
+  for (var i = 0; i < names.length; i++) {
+    if (idx[names[i]] != null) return idx[names[i]];
+  }
+  return null;
+}
+
+function headerPresent_(existing, name) {
+  if (existing.indexOf(name) !== -1) return true;
+  if (name === 'Preferred_Date' && existing.indexOf('I_Date') !== -1) return true;
+  return false;
+}
+
+function headerIndex_(sheet, name) {
+  var headers = headerNames_(sheet);
+  var target = String(name || '').trim();
+  for (var i = 0; i < headers.length; i++) {
+    if (headers[i] === target) return i;
+  }
+  return -1;
+}
+
+function findRowById_(sheet, id) {
+  // SpreadsheetApp getDataRange()/getValues() include hidden rows. Do not skip them.
+  var values = sheet.getDataRange().getValues();
+  if (values.length < 2) return -1;
+  var idCol = headerMap_(values[0]).Submission_ID;
+  if (idCol == null) return -1;
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][idCol] || '').trim() === id) return r + 1;
+  }
+  return -1;
+}
+
 function parseBody_(e) {
   if (!e || !e.postData || !e.postData.contents) {
     throw new Error('Empty body');
   }
-  var parsed = JSON.parse(e.postData.contents);
+  var raw = String(e.postData.contents).replace(/^\uFEFF/, '').trim();
+  var parsed = JSON.parse(raw);
   if (!parsed || typeof parsed !== 'object') {
     throw new Error('Invalid JSON');
   }
   return parsed;
+}
+
+function requestAction_(e, data) {
+  var fromBody = data && data.action != null ? String(data.action).trim() : '';
+  if (fromBody) return fromBody;
+
+  var fromQuery = '';
+  if (e && e.parameter && e.parameter.action != null) {
+    fromQuery = String(e.parameter.action).trim();
+  }
+  if (!fromQuery && e && e.parameters && e.parameters.action && e.parameters.action.length) {
+    fromQuery = String(e.parameters.action[0] || '').trim();
+  }
+  if (!fromQuery && e && e.queryString) {
+    var match = String(e.queryString).match(/(?:^|&)action=([^&]*)/);
+    if (match) {
+      try {
+        fromQuery = decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+      } catch (decodeErr) {
+        fromQuery = String(match[1] || '').trim();
+      }
+    }
+  }
+  return fromQuery;
 }
 
 function isSpam_(data) {
@@ -191,6 +438,37 @@ function sanitize_(value, maxLen) {
   text = text.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
   if (text.length > maxLen) text = text.slice(0, maxLen);
   return text;
+}
+
+function sanitizeAmount_(value) {
+  var text = sanitize_(value, 24);
+  if (!text) return '';
+  text = text.replace(/CAD/gi, '').replace(/[$,\s]/g, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(text)) return null;
+  var n = Number(text);
+  if (!isFinite(n) || n < 0 || n > 9999999.99) return null;
+  return n.toFixed(2);
+}
+
+function formatAmountCell_(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'number' && isFinite(value)) return value.toFixed(2);
+  var parsed = sanitizeAmount_(value);
+  return parsed == null ? sanitize_(value, 24) : parsed;
+}
+
+function formatCell_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    var tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'America/Vancouver';
+    return Utilities.formatDate(value, tz, 'yyyy-MM-dd HH:mm:ss');
+  }
+  return value == null ? '' : String(value);
+}
+
+function cellString_(row, index) {
+  if (index == null) return '';
+  var value = row[index];
+  return value == null ? '' : String(value);
 }
 
 function compact_(parts, joiner) {

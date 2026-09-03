@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="Smile Well Medical & Spa — staff reception desk for IV memberships."
+    />
+    <title>Reception desk · Smile Well Medical &amp; Spa</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              navy: { DEFAULT: "#1d3557", dark: "#13233b", soft: "#e8eef6" },
+              gold: "#f6e27a",
+              cream: "#f6f4ef",
+              mist: "#e4e0d8",
+              ink: "#1c2430",
+            },
+            fontFamily: {
+              serif: ["Source Serif 4", "Georgia", "serif"],
+              sans: ["DM Sans", "system-ui", "sans-serif"],
+            },
+            screens: {
+              ipad: "820px",
+              ipadland: { raw: "(min-width: 1024px) and (max-height: 900px)" },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      .lift {
+        box-shadow:
+          0 1px 2px rgb(29 53 87 / 0.06),
+          0 12px 28px rgb(29 53 87 / 0.1),
+          0 28px 48px rgb(29 53 87 / 0.06);
+      }
+      input,
+      textarea,
+      button,
+      select,
+      label {
+        touch-action: manipulation;
+      }
+      input:not([type="checkbox"]):not([type="hidden"]),
+      textarea,
+      select {
+        font-size: 1rem;
+      }
+      .desk-scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+      }
+    </style>
+  </head>
+  <body class="bg-cream text-ink font-sans antialiased min-h-dvh">
+    <header class="border-b border-navy/10 bg-white">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 ipad:px-8 py-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3 min-w-0">
+          <img
+            src="logo.svg"
+            alt="Smile Well Medical &amp; Spa"
+            width="180"
+            height="36"
+            class="h-7 sm:h-8 w-auto"
+          />
+          <span class="hidden sm:inline text-navy/30">|</span>
+          <p class="text-navy text-xs font-medium tracking-[0.16em] uppercase truncate">
+            Reception desk
+          </p>
+        </div>
+        <button
+          id="refresh-btn"
+          type="button"
+          class="min-h-11 px-4 rounded-full border border-navy/15 bg-cream/70 text-sm text-navy hover:bg-navy-soft transition"
+        >
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 ipad:px-8 py-5 ipad:py-6">
+      <div
+        id="desk"
+        class="grid grid-cols-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] gap-4 ipad:gap-5 items-start"
+      >
+        <aside
+          id="list-pane"
+          class="lift rounded-3xl border border-navy/15 bg-white overflow-hidden min-w-0"
+        >
+          <div class="p-4 sm:p-5 border-b border-mist">
+            <label for="client-search" class="block text-sm mb-2">Search members</label>
+            <input
+              id="client-search"
+              type="search"
+              inputmode="search"
+              autocomplete="off"
+              placeholder="Name, phone, or ID"
+              class="w-full rounded-xl border border-mist bg-cream/60 px-3.5 ipad:px-4 py-3 text-base min-h-12 outline-none focus:border-navy focus:ring-2 focus:ring-navy/15"
+            />
+            <p id="list-meta" class="mt-2 text-xs text-ink/50" aria-live="polite"></p>
+          </div>
+          <div
+            id="client-list"
+            class="desk-scroll divide-y divide-mist max-h-[min(70dvh,36rem)] lg:max-h-[calc(100dvh-13rem)] overflow-y-auto"
+            role="list"
+          ></div>
+        </aside>
+
+        <section
+          id="detail-pane"
+          class="lift rounded-3xl border border-navy/15 bg-white min-w-0 hidden lg:block"
+        >
+          <div id="detail-body" class="p-5 sm:p-6 ipad:p-7"></div>
+        </section>
+      </div>
+    </main>
+
+    <script src="receptionist.js"></script>
+  </body>
+</html>
