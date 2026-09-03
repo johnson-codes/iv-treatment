@@ -160,7 +160,8 @@ function readForm() {
     agreement: form.querySelector("#agreement").checked,
     cardAck: form.querySelector("#cardAck").checked,
     consent: form.querySelector("#consent").checked,
-    honeypot: (data.get("company_website") || "").toString().trim(),
+    // Field name must stay in sync with index.html and isSpam_() in apps-script/Code.gs.
+    honeypot: (data.get("iv_x9f2") || "").toString().trim(),
   };
 }
 
@@ -248,7 +249,7 @@ function resetToForm() {
 
 function buildPayload(values) {
   const utm = getUtm();
-  return {
+  const payload = {
     fullName: values.fullName,
     dob: values.dob,
     phone: values.phone,
@@ -268,6 +269,8 @@ function buildPayload(values) {
     ...utm,
     pageUrl: window.location.href.split("#")[0],
   };
+  if (values.honeypot) payload.honeypot = values.honeypot;
+  return payload;
 }
 
 async function sendLead(payload) {
@@ -296,7 +299,7 @@ async function sendLead(payload) {
 
 form.addEventListener("blur", (event) => {
   const name = event.target && event.target.name;
-  if (!name || name === "company_website" || name === "healthNotes" || name === "expiryDate" || name === "hearAboutOther") return;
+  if (!name || name === "iv_x9f2" || name === "healthNotes" || name === "expiryDate" || name === "hearAboutOther") return;
   const values = readForm();
   const errors = validate(values);
   setError(name, errors[name] || "");
@@ -318,15 +321,12 @@ form.addEventListener("submit", async (event) => {
   clearErrors();
   const values = readForm();
 
-  if (values.honeypot) {
-    showSuccess("IV-OK", values);
-    return;
-  }
-
-  const errors = validate(values);
-  if (Object.keys(errors).length) {
-    showErrors(errors);
-    return;
+  if (!values.honeypot) {
+    const errors = validate(values);
+    if (Object.keys(errors).length) {
+      showErrors(errors);
+      return;
+    }
   }
 
   setLoading(true);

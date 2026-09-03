@@ -594,7 +594,7 @@ function requestAction_(e, data) {
 }
 
 function isSpam_(data) {
-  return Boolean(sanitize_(data.honeypot || data.company_website, 200));
+  return Boolean(sanitize_(data.honeypot || data.iv_x9f2, 200));
 }
 
 function validate_(data) {
